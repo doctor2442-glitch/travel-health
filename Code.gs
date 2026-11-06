@@ -32,17 +32,21 @@ var ALLOWED_OPS = {
   festival: {
     url: 'https://apis.data.go.kr/B551011/KorService2/searchFestival2',
     fixed: { MobileOS: 'ETC', MobileApp: 'TravelHealth', _type: 'json' },
-    defaults: { numOfRows: '20', pageNo: '1', arrange: 'C' }
+    defaults: { numOfRows: '20', pageNo: '1', arrange: 'C' },
+    maxRows: 100
   },
   pharmacy: {
-    url: 'https://apis.data.go.kr/B552657/ErmctInsttInfoInqireService/getParmacyLcinfoInqire',
+    // 약국 목록 (시도 Q0, 시군구 Q1, 요일 QT: 월1~일7, 공휴일8)
+    url: 'https://apis.data.go.kr/B552657/ErmctInsttInfoInqireService/getParmacyListInfoInqire',
     fixed: {},
-    defaults: { numOfRows: '20', pageNo: '1' }
+    defaults: { numOfRows: '100', pageNo: '1' },
+    maxRows: 300
   },
   er: {
-    url: 'https://apis.data.go.kr/B552657/ErmctInfoInqireService/getEgytLcinfoInqire',
+    // 응급실 실시간 가용병상 (시도 STAGE1, 시군구 STAGE2)
+    url: 'https://apis.data.go.kr/B552657/ErmctInfoInqireService/getEmrrmRltmUsefulSckbdInfoInqire',
     fixed: {},
-    defaults: { numOfRows: '20', pageNo: '1' }
+    defaults: { numOfRows: '30', pageNo: '1' }
   },
   sun: {
     // 한국천문연구원 출몰시각 정보 - 위치(위도·경도)별
@@ -63,10 +67,17 @@ var ALLOWED_PARAMS = {
   fcst: ['base_date', 'base_time', 'nx', 'ny'],
   tour: ['mapX', 'mapY', 'radius', 'contentTypeId', 'arrange', 'numOfRows', 'pageNo'],
   festival: ['eventStartDate', 'eventEndDate', 'areaCode', 'sigunguCode', 'lDongRegnCd', 'arrange', 'numOfRows', 'pageNo'],
-  pharmacy: ['WGS84_LON', 'WGS84_LAT', 'numOfRows', 'pageNo'],
-  er: ['WGS84_LON', 'WGS84_LAT', 'numOfRows', 'pageNo'],
+  pharmacy: ['Q0', 'Q1', 'QT', 'QN', 'ORD', 'numOfRows', 'pageNo'],
+  er: ['STAGE1', 'STAGE2', 'numOfRows', 'pageNo'],
   sun: ['locdate', 'longitude', 'latitude'],
-  drug: ['itemName', 'entpName', 'numOfRows', 'pageNo']
+  drug: ['itemName', 'entpName', 'efcyQesitm', 'numOfRows', 'pageNo']
+};
+
+// 예전 지역 번호(areaCode) → KorService2 법정동 시도 코드(lDongRegnCd)
+// (checkAll 결과: areaCode 로는 축제 0개, lDongRegnCd 로는 정상)
+var AREA_TO_LDONG = {
+  '1': '11', '2': '28', '3': '30', '4': '27', '5': '29', '6': '26', '7': '31', '8': '36110',
+  '31': '41', '32': '51', '33': '43', '34': '44', '35': '47', '36': '48', '37': '52', '38': '46', '39': '50'
 };
 
 var VALUE_PATTERN = /^[0-9A-Za-z가-힣ㄱ-ㅎㅏ-ㅣ .\-_()]{1,60}$/;
@@ -95,7 +106,12 @@ function relay_(op, params) {
     if (!VALUE_PATTERN.test(v)) return { ok: false, op: op, error: '값 형식이 올바르지 않음: ' + name };
     q[name] = v;
   }
-  if (q.numOfRows && Number(q.numOfRows) > MAX_ROWS) q.numOfRows = String(MAX_ROWS);
+  if (op === 'festival' && q.areaCode) {
+    if (!q.lDongRegnCd && AREA_TO_LDONG[q.areaCode]) q.lDongRegnCd = AREA_TO_LDONG[q.areaCode];
+    delete q.areaCode;
+  }
+  var maxRows = conf.maxRows || MAX_ROWS;
+  if (q.numOfRows && Number(q.numOfRows) > maxRows) q.numOfRows = String(maxRows);
   for (k in (conf.fixed || {})) q[k] = conf.fixed[k];
 
   var qs = Object.keys(q).sort().map(function (n) {
@@ -252,10 +268,9 @@ function checkAll() {
     ncst: { base_date: ymd, base_time: hh + '00', nx: '60', ny: '127' },
     fcst: { base_date: fymd, base_time: fhh + '30', nx: '60', ny: '127' },
     tour: { mapX: '126.9780', mapY: '37.5665', radius: '5000', numOfRows: '3' },
-    festival: { eventStartDate: today, lDongRegnCd: '11', numOfRows: '3' },
-    festival_all: { eventStartDate: today, numOfRows: '3' },
-    pharmacy: { WGS84_LON: '126.9780', WGS84_LAT: '37.5665', numOfRows: '3' },
-    er: { WGS84_LON: '126.9780', WGS84_LAT: '37.5665', numOfRows: '3' },
+    festival: { eventStartDate: today, areaCode: '1', numOfRows: '3' },
+    pharmacy: { Q0: '서울특별시', Q1: '종로구', QT: '1', numOfRows: '3' },
+    er: { STAGE1: '서울특별시', STAGE2: '종로구', numOfRows: '3' },
     sun: { locdate: today, longitude: '126.98', latitude: '37.57' },
     drug: { itemName: '타이레놀', numOfRows: '1' }
   };
