@@ -91,22 +91,22 @@ footer{max-width:760px;margin:0 auto;padding:0 16px 30px;color:var(--muted);font
 
 /* ---------- 여행지 ---------- */
 var DESTS = [
-  {name:"서울", lat:37.5665, lon:126.9780, areaCode:"1"},
-  {name:"부산 해운대", lat:35.1587, lon:129.1604, areaCode:"6"},
-  {name:"제주시", lat:33.4996, lon:126.5312, areaCode:"39"},
-  {name:"서귀포", lat:33.2541, lon:126.5601, areaCode:"39"},
-  {name:"강릉", lat:37.7519, lon:128.8761, areaCode:"32"},
-  {name:"속초", lat:38.2070, lon:128.5918, areaCode:"32"},
-  {name:"경주", lat:35.8562, lon:129.2247, areaCode:"35"},
-  {name:"전주 한옥마을", lat:35.8151, lon:127.1530, areaCode:"37"},
-  {name:"여수", lat:34.7604, lon:127.6622, areaCode:"38"},
-  {name:"인천", lat:37.4563, lon:126.7052, areaCode:"2"},
-  {name:"대전", lat:36.3504, lon:127.3845, areaCode:"3"},
-  {name:"대구", lat:35.8714, lon:128.6014, areaCode:"4"},
-  {name:"광주", lat:35.1595, lon:126.8526, areaCode:"5"},
-  {name:"춘천", lat:37.8813, lon:127.7298, areaCode:"32"},
-  {name:"안동", lat:36.5684, lon:128.7294, areaCode:"35"},
-  {name:"통영", lat:34.8544, lon:128.4331, areaCode:"36"}
+  {name:"서울", lat:37.5665, lon:126.9780, lDong:"11"},
+  {name:"부산 해운대", lat:35.1587, lon:129.1604, lDong:"26"},
+  {name:"제주시", lat:33.4996, lon:126.5312, lDong:"50"},
+  {name:"서귀포", lat:33.2541, lon:126.5601, lDong:"50"},
+  {name:"강릉", lat:37.7519, lon:128.8761, lDong:"51"},
+  {name:"속초", lat:38.2070, lon:128.5918, lDong:"51"},
+  {name:"경주", lat:35.8562, lon:129.2247, lDong:"47"},
+  {name:"전주 한옥마을", lat:35.8151, lon:127.1530, lDong:"52"},
+  {name:"여수", lat:34.7604, lon:127.6622, lDong:"46"},
+  {name:"인천", lat:37.4563, lon:126.7052, lDong:"28"},
+  {name:"대전", lat:36.3504, lon:127.3845, lDong:"30"},
+  {name:"대구", lat:35.8714, lon:128.6014, lDong:"27"},
+  {name:"광주", lat:35.1595, lon:126.8526, lDong:"29"},
+  {name:"춘천", lat:37.8813, lon:127.7298, lDong:"51"},
+  {name:"안동", lat:36.5684, lon:128.7294, lDong:"47"},
+  {name:"통영", lat:34.8544, lon:128.4331, lDong:"48"}
 ];
 var current = DESTS[0];
 var tab = "weather";
@@ -260,11 +260,16 @@ function showTour(my){
 function showFestival(my){
   loading("축제 불러오는 중…");
   var p = {eventStartDate: ymd(kst(0)), numOfRows: 20};
-  if (current.areaCode) p.areaCode = current.areaCode;
+  if (current.lDong) p.lDongRegnCd = current.lDong;
+  var scope = current.lDong ? current.name + " 지역" : "전국";
   call("festival", p).then(function(res){
+    if (list(res).length || !p.lDongRegnCd) return res;
+    delete p.lDongRegnCd; scope = current.name + " 지역에 없어 전국";
+    return call("festival", p);
+  }).then(function(res){
     if (my !== token) return;
     var items = list(res);
-    $("view").innerHTML = '<div class="muted">' + esc(current.areaCode ? current.name + " 지역" : "전국") + ', 오늘 이후 열리는 축제</div>' +
+    $("view").innerHTML = '<div class="muted">' + esc(scope) + ', 오늘 이후 열리는 축제</div>' +
       (items.length ? items.map(function(it){
         return '<div class="card item">' + (it.firstimage ? '<img loading="lazy" alt="" src="' + esc(it.firstimage) + '">' : "") +
           '<div class="body"><h3>' + esc(it.title) + '</h3><div>📅 ' + esc(fmtDate(it.eventstartdate)) + ' ~ ' + esc(fmtDate(it.eventenddate)) + '</div>' +
@@ -344,7 +349,7 @@ $("dest").onchange = function(){
 $("locBtn").onclick = function(){
   if (!navigator.geolocation) { alert("이 브라우저는 위치 기능을 지원하지 않아요."); return; }
   navigator.geolocation.getCurrentPosition(function(p){
-    current = {name:"내 위치", lat:p.coords.latitude, lon:p.coords.longitude, areaCode:null, mine:true};
+    current = {name:"내 위치", lat:p.coords.latitude, lon:p.coords.longitude, lDong:null, mine:true};
     fillDest(); render();
   }, function(){ alert("위치를 가져오지 못했어요. 여행지를 목록에서 골라 주세요."); }, {timeout:10000});
 };

@@ -252,7 +252,8 @@ function checkAll() {
     ncst: { base_date: ymd, base_time: hh + '00', nx: '60', ny: '127' },
     fcst: { base_date: fymd, base_time: fhh + '30', nx: '60', ny: '127' },
     tour: { mapX: '126.9780', mapY: '37.5665', radius: '5000', numOfRows: '3' },
-    festival: { eventStartDate: today, areaCode: '1', numOfRows: '3' },
+    festival: { eventStartDate: today, lDongRegnCd: '11', numOfRows: '3' },
+    festival_all: { eventStartDate: today, numOfRows: '3' },
     pharmacy: { WGS84_LON: '126.9780', WGS84_LAT: '37.5665', numOfRows: '3' },
     er: { WGS84_LON: '126.9780', WGS84_LAT: '37.5665', numOfRows: '3' },
     sun: { locdate: today, longitude: '126.98', latitude: '37.57' },
@@ -260,7 +261,7 @@ function checkAll() {
   };
 
   Object.keys(tests).forEach(function (op) {
-    var r = relay_(op, tests[op]);
+    var r = relay_(op.split('_')[0], tests[op]);
     var count = countItems_(r);
     var line = '[' + op + '] ' + (r.ok ? '✅ ' : '❌ ') +
       (r.error ? r.error : (r.resultCode + ' ' + r.resultMsg + ' / 항목 ' + count + '개'));
