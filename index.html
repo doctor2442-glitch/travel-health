@@ -342,6 +342,44 @@
     .stats { grid-template-columns: repeat(3, 1fr); }
     .two { grid-template-columns: 1fr; gap: 0; }
   }
+
+  /* ===== 지금 나가도 될까 (여행 버전) ===== */
+  #view-outside { --heat: #d9542f; --heat-soft: #fde6dc; --cold: #2f6fb3; --cold-soft: #dde9f7; --dusk: #b8661f; --dusk-soft: #fbe9d4; }
+  @media (prefers-color-scheme: dark) {
+    #view-outside { --heat: #ff8a62; --heat-soft: #3a2119; --cold: #7fb2ec; --cold-soft: #1a2a3d; --dusk: #f0a560; --dusk-soft: #36281a; }
+  }
+  .o-stage { position: relative; border-radius: 22px; overflow: hidden; border: 1px solid var(--line); background: #bfe3f2; margin-top: 16px; }
+  .o-stage svg.o-scene { display: block; width: 100%; height: auto; min-width: 560px; }
+  .o-pan { overflow-x: auto; }
+  .o-verdict { position: absolute; left: 14px; top: 12px; right: 14px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; pointer-events: none; }
+  .o-badge { font-family: "Jua", sans-serif; font-size: 1.15rem; padding: 4px 14px; border-radius: 999px; background: rgba(255,255,255,.92); color: #2f4a42; box-shadow: 0 2px 6px rgba(0,0,0,.12); }
+  .o-badge.small { font-size: .9rem; }
+  .o-try { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: .9rem; color: var(--muted); margin: 10px 0 4px; }
+  .o-try button { border-radius: 999px; padding: 4px 12px; font-size: .9rem; }
+  .o-try button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .o-lvl { display: inline-flex; gap: 4px; margin-top: 4px; }
+  .o-lvl i { width: 22px; height: 8px; border-radius: 4px; background: var(--line); }
+  .tile.o-heat .o-lvl i.on { background: var(--heat); }
+  .tile.o-cold .o-lvl i.on { background: var(--cold); }
+  .o-todo { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .o-todo li { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: 14px; background: var(--accent-soft); }
+  .o-todo li b { font-family: "Jua", sans-serif; font-weight: 400; font-size: 1.05rem; display: block; }
+  .o-todo li span { font-size: .9rem; color: var(--muted); display: block; }
+  .o-todo li a { font-size: .9rem; }
+  .o-todo .who { flex: none; width: 42px; height: 42px; border-radius: 50%; background: var(--card); display: grid; place-items: center; font-family: "Jua", sans-serif; font-size: .8rem; text-align: center; line-height: 1.1; }
+  .o-mode-heat .o-todo li { background: var(--heat-soft); }
+  .o-mode-cold .o-todo li { background: var(--cold-soft); }
+  .o-mode-dusk .o-todo li, .o-mode-night .o-todo li { background: var(--dusk-soft); }
+  .cat.cat-wide { grid-column: 1 / -1; }
+  @keyframes o-tw { to { opacity: .25; } }
+  @keyframes o-pulse { to { transform: scale(1.12); } }
+  @keyframes o-snow { from { transform: translate(0,-10px); } to { transform: translate(-30px,380px); } }
+  @keyframes o-rain { from { transform: translate(0,-40px); } to { transform: translate(-40px,380px); } }
+  @keyframes o-haze { 0%,100% { transform: translateY(0); opacity: .2; } 50% { transform: translateY(-12px); opacity: .75; } }
+  @keyframes o-pop { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  @keyframes o-smk { from { transform: translate(0,0) scale(.6); opacity: .9; } to { transform: translate(18px,-40px) scale(1.6); opacity: 0; } }
+  @keyframes o-flash { 0%, 80%, 100% { opacity: 0; } 85% { opacity: .95; } }
+  @media (max-width: 760px) { .o-todo { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
@@ -413,6 +451,13 @@
           <em>약 이름이나 증상으로 검색해요</em></span>
         <span class="arrow">→</span>
       </a>
+      <a class="cat cat-wide" href="#outside" style="--c:#e07a2f">
+        <span class="cat-ico" id="icoOutside"></span>
+        <span class="cat-txt"><small>여행이 · 바깥 나들이</small><b>지금 나가도 될까?</b>
+          <span>더위·추위 위험과 해 지는 시각을 보고, 여행이가 지금 할 일을 보여 줘요.</span>
+          <em id="catOutside">불러오는 중…</em></span>
+        <span class="arrow">→</span>
+      </a>
     </div>
   </div>
 
@@ -477,6 +522,41 @@
       캐릭터 미리보기(날씨와 상관없이 모습만 바꿔 봐요):
       <span id="previewBtns"></span>
     </div>
+  </div>
+
+  <!-- ===== 지금 나가도 될까 ===== -->
+  <div id="view-outside" class="view" hidden>
+    <a class="back" href="#">← 처음으로</a>
+    <div class="intro" style="--c:#e07a2f">
+      <div class="dino-world" aria-hidden="true"></div>
+      <div class="intro-txt">
+        <small>여행이의 안내</small>
+        <h2 class="jua">지금 나가도 될까?</h2>
+        <p>지금 기온과 체감온도, 해 지는 시각을 보고 야외로 갈지, 카페·실내 명소로 갈지, 숙소로 돌아갈지 알려 드려요.</p>
+        <div class="src"><span class="live">실시간 API</span>기상청 초단기실황 · 한국천문연구원 출몰시각 · 위험 단계는 체감온도로 추정</div>
+      </div>
+      <div class="intro-char" data-char="trip"></div>
+    </div>
+
+    <div class="o-stage">
+      <div class="o-pan"><svg id="oScene" class="o-scene" viewBox="0 0 800 360" role="img" aria-label="여행지 그림: 여행이와 여행자들"></svg></div>
+      <div class="o-verdict"><span class="o-badge" id="oVerdict">불러오는 중…</span><span class="o-badge small" id="oClock"></span></div>
+    </div>
+    <div class="o-try" id="oTry">상황 미리보기:</div>
+
+    <div class="tiles three">
+      <div class="tile"><small>🌡️ 지금 기온</small><strong id="oTemp">-</strong><span id="oTempSub"></span></div>
+      <div class="tile o-heat" id="oRiskTile"><small id="oRiskLabel">더위·추위 위험</small><strong id="oRisk">-</strong>
+        <span class="o-lvl" id="oRiskBar"><i></i><i></i><i></i><i></i></span><span id="oRiskSub"></span></div>
+      <div class="tile"><small>🌇 해 지는 시각</small><strong id="oSun">-</strong><span id="oSunSub"></span></div>
+    </div>
+
+    <section class="card">
+      <h2 class="jua">🧭 지금 이렇게 해요</h2>
+      <p class="sub" id="oTodoHint"></p>
+      <ul class="o-todo" id="oTodo"></ul>
+    </section>
+    <p class="sub" id="oNote"></p>
   </div>
 
   <!-- ===== 관광지 ===== -->
@@ -1055,7 +1135,7 @@ function fillChips(id, label, words) {
 }
 
 // ================= 화면 바꾸기 (주소 끝 #weather, #tour, #care, #drug) =================
-var VIEWS = ["home", "weather", "tour", "care", "drug"];
+var VIEWS = ["home", "weather", "tour", "care", "drug", "outside"];
 var scrollTarget = null;   // 화면을 바꾼 뒤 이동할 곳
 function showView(v) {
   if (VIEWS.indexOf(v) < 0) v = "home";
@@ -1134,6 +1214,7 @@ function loadWeather() {
     paintCharacters("cloudy", "날씨를 못 불러왔어요 😢", "그래도 가 볼 곳은 찾아 줄게!");
     setText("homeWeather", "날씨를 불러오지 못했어요. 새로고침을 눌러 보세요.");
     setText("catWeather", "날씨를 불러오지 못했어요");
+    OUT.setWeather(null);
     clear("hourly"); renderPack("cloudy");
     pickTourTab("12", false);
   });
@@ -1167,6 +1248,7 @@ function renderWeather(w, hours, nb) {
   setText("homeWeather", MOODS[mood].label.split(" ")[0] + " " + dest.name + " 지금 " + summary);
   setText("catWeather", "지금 " + summary);
   showMood(mood, true);
+  OUT.setWeather(w);
 }
 // ----- 해 뜨고 지는 시각 (한국천문연구원 출몰시각 정보) -----
 // 여행지 중심 위도·경도로 오늘 시각을 받아요. 실패해도 날씨는 그대로 보여 줘요.
@@ -1191,11 +1273,13 @@ function loadSun() {
                       : ce != null && nowMin < ce ? "곧 어두워져요 (" + clock(ce) + ")" : "해가 졌어요, 밤길 조심해요");
       setText("tDay", dur(set - rise));
       setText("tDayLv", dest.name + " 기준");
+      OUT.setSun({ rise: rise, set: set, dusk: ce });
     }).catch(function (err) {
       if (forDest !== dest) return;
       ["tRise", "tSet", "tDay"].forEach(function (id) { setText(id, "-"); });
       setText("tRiseLv", "해 뜨는 시각을 불러오지 못했어요");
       setText("tSetLv", err.message);
+      OUT.setSun(null);
     });
 }
 function hhmm(v) {   // "0712  " → 432(분). 비어 있거나 "-----"면 null
@@ -1904,6 +1988,7 @@ function showMsg(id, kind, text) { var m = document.getElementById(id); m.innerH
 
 // ================= 시작 =================
 function loadAll() {
+  OUT.reset();
   basis = null;
   careSum = { pharm: "약국 확인 중", er: "응급실 확인 중" }; updateCareSum();
   tourSum = { spots: "", fest: "" }; updateTourSum(); setText("catWeather", "불러오는 중…");
@@ -1914,6 +1999,495 @@ function loadAll() {
   loadER();
   loadFestivals().catch(function () { tourSum.fest = ""; updateTourSum(); });
 }
+
+// ================= 6. 지금 나가도 될까 (여행이 애니메이션) =================
+// 날씨(초단기실황)와 해 지는 시각으로 지금 상황을 고르고, 여행이와 여행자들이 그에 맞게 움직여요.
+// 위험 단계는 기상청 공식 단계가 아니라 체감온도로 앱이 추정한 값이에요.
+var OUT = (function () {
+  var NS = "http://www.w3.org/2000/svg", GROUND = 300, OINK = "#2c3a2b";
+  var REDUCED = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var scene = null, world = null, wx = null, sun = null, forced = null, rafOn = false, lastT = null;
+  var LV = ["없음", "관심", "주의", "경고", "위험"];
+
+  // ----- 위험 단계 (체감온도) -----
+  function heatIndex(t, rh) {
+    var tw = t * Math.atan(0.151977 * Math.sqrt(rh + 8.313659)) + Math.atan(t + rh) - Math.atan(rh - 1.67633)
+           + 0.00391838 * Math.pow(rh, 1.5) * Math.atan(0.023101 * rh) - 4.686035;
+    return -0.2442 + 0.55399 * tw + 0.45535 * t - 0.0022 * tw * tw + 0.00278 * tw * t + 3.0;
+  }
+  function windChill(t, ms) {
+    var v = Math.max(ms * 3.6, 4.8);
+    return 13.12 + 0.6215 * t - 11.37 * Math.pow(v, 0.16) + 0.3965 * Math.pow(v, 0.16) * t;
+  }
+  function estHeat(f) { return f >= 38 ? 4 : f >= 35 ? 3 : f >= 33 ? 2 : f >= 31 ? 1 : 0; }
+  function estCold(f) { return f <= -20 ? 4 : f <= -15 ? 3 : f <= -10 ? 2 : f <= -5 ? 1 : 0; }
+
+  // 해 뜨고 지는 시각 근사식 (천문연 자료를 못 받을 때)
+  function sunCalc(lat, lon) {
+    var d = new Date(Date.now() + 9 * 3600000);
+    var doy = Math.floor((Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) - Date.UTC(d.getUTCFullYear(), 0, 0)) / 86400000);
+    var D = Math.PI / 180, g = 2 * Math.PI / 365 * (doy - 1);
+    var eq = 229.18 * (0.000075 + 0.001868 * Math.cos(g) - 0.032077 * Math.sin(g) - 0.014615 * Math.cos(2 * g) - 0.040849 * Math.sin(2 * g));
+    var decl = 0.006918 - 0.399912 * Math.cos(g) + 0.070257 * Math.sin(g) - 0.006758 * Math.cos(2 * g) + 0.000907 * Math.sin(2 * g);
+    function ha(zen) { var c = Math.cos(zen * D) / (Math.cos(lat * D) * Math.cos(decl)) - Math.tan(lat * D) * Math.tan(decl); return Math.acos(Math.max(-1, Math.min(1, c))) / D; }
+    var noon = 720 - 4 * lon - eq + 540;
+    return { rise: Math.round(noon - 4 * ha(90.833)), set: Math.round(noon + 4 * ha(90.833)), dusk: Math.round(noon + 4 * ha(96)), src: "계산" };
+  }
+
+  // ----- 상황 -----
+  var MODES = {
+    fine:  { label: "☀️ 여행하기 좋아요", cls: "", mood: "sunny" },
+    heat1: { label: "🥵 더워요, 그늘에서 쉬엄쉬엄", cls: "o-mode-heat", mood: "hot" },
+    heat:  { label: "🔥 너무 더워요! 실내로 피해요", cls: "o-mode-heat", mood: "hot" },
+    cold1: { label: "🧣 쌀쌀해요, 따뜻하게", cls: "o-mode-cold", mood: "cold" },
+    cold:  { label: "🥶 너무 추워요! 실내로", cls: "o-mode-cold", mood: "cold" },
+    rain:  { label: "☔ 비가 와요, 실내 명소로", cls: "o-mode-cold", mood: "rain" },
+    dusk:  { label: "🌇 곧 해가 져요, 숙소로", cls: "o-mode-dusk", mood: "cloudy" },
+    night: { label: "🌙 밤이에요, 숙소에서 쉬어요", cls: "o-mode-night", mood: "night" }
+  };
+  var NAMES = { fine: "좋은 날", heat1: "조금 더움", heat: "폭염", cold1: "쌀쌀함", cold: "한파", rain: "비", dusk: "해질녘", night: "밤" };
+  var HINT = { fine: "오늘은 크게 조심할 게 없어요. 야외 명소를 즐겨요.", heat1: "더위가 시작됐어요. 한낮만 조심하면 돼요.",
+               heat: "폭염 수준이에요. 한낮 야외 일정은 미루고 실내로 가요.", cold1: "쌀쌀해요. 겹쳐 입고 중간중간 몸을 녹여요.",
+               cold: "한파 수준이에요. 실내 명소 위주로 다녀요.", rain: "비가 와요. 실내 명소로 일정을 바꿔 봐요.",
+               dusk: "해가 곧 져요. 산길·바닷길 일정은 마무리할 때예요.", night: "해가 졌어요. 숙소에서 쉬고 내일을 준비해요." };
+  // [누가, 할 일, 설명, 이어 갈 화면]
+  var TODO = {
+    fine:  [["모두", "야외 명소 다니기 좋은 날", "그래도 두세 시간마다 물 마시고 쉬어 가요.", "#tour"],
+            ["사진", "포토존은 오전·늦은 오후", "햇빛이 부드러워 사진이 예쁘게 나와요."],
+            ["해", "해 지는 시각 확인", "해 지기 30분 전엔 숙소로 돌아갈 준비를 해요."]],
+    heat1: [["한낮", "12~17시엔 그늘·실내로", "야외 명소는 이른 아침이나 저녁에 가요.", "#tour"],
+            ["물", "20분마다 한 컵", "목마르지 않아도 조금씩 자주 마셔요."],
+            ["옷", "모자·선크림·양산", "밝고 헐렁한 옷이 시원해요."]],
+    heat:  [["일정", "야외 일정 미루기", "한낮엔 박물관·카페 같은 실내 명소로 가요.", "#tour"],
+            ["숙소", "숙소에서 한숨 쉬기", "가장 더운 14~16시엔 쉬었다가 저녁에 다시 나가요."],
+            ["약", "약은 차 안에 두지 않기", "뜨거운 차 안에선 약이 상하기 쉬워요."],
+            ["몸", "어지럽고 메스꺼우면 119", "시원한 곳에서 몸을 식히고, 가까운 응급실을 확인해요.", "#care"]],
+    cold1: [["옷", "겹쳐 입고 모자 쓰기", "얇은 옷 여러 겹이 두꺼운 한 벌보다 따뜻해요."],
+            ["카페", "따뜻한 음료로 쉬어 가기", "1~2시간마다 실내에서 몸을 녹여요."],
+            ["해", "새벽·밤 일정 줄이기", "해가 진 뒤엔 기온이 훨씬 떨어져요."]],
+    cold:  [["일정", "실내 명소 위주로", "박물관·전시관·시장처럼 실내에서 다녀요.", "#tour"],
+            ["몸", "귀·손끝 동상 조심", "장갑·귀마개·핫팩을 챙기고, 감각이 둔해지면 바로 실내로."],
+            ["길", "빙판길 천천히", "손은 주머니에서 빼고 보폭을 좁게 걸어요."],
+            ["약", "감기 기운이 있으면", "상비약을 확인하고 가까운 약국을 봐 둬요.", "#care"]],
+    rain:  [["일정", "실내 명소로 바꾸기", "박물관·미술관·카페 거리를 골라 봐요.", "#tour"],
+            ["길", "미끄럼 조심", "계단·데크길·바위는 비에 젖으면 특히 미끄러워요."],
+            ["짐", "약은 지퍼백에", "젖으면 못 쓰게 되는 약이 많아요."]],
+    dusk:  [["모두", "숙소로 돌아갈 준비", "해가 지면 산길·바닷길은 금세 어두워져요."],
+            ["운전", "전조등 켜기", "해 질 녘엔 걷는 사람이 잘 안 보여요."],
+            ["사진", "노을은 안전한 곳에서", "방파제·절벽 끝에서는 사진을 찍지 않아요."]],
+    night: [["모두", "숙소에서 푹 쉬기", "내일 일정을 위해 일찍 쉬어요."],
+            ["밤길", "밝은 길로 다니기", "꼭 나가야 하면 밝은 옷과 손전등(휴대폰)을 챙겨요."],
+            ["약", "문 연 약국 미리 보기", "밤엔 문 연 약국이 적어요.", "#care"]]
+  };
+  function pickMode(s) {
+    if (s.heat >= 2) return "heat";
+    if (s.cold >= 2) return "cold";
+    if (s.rain) return "rain";
+    if (s.dark) return "night";
+    if (s.toDusk <= 60) return "dusk";
+    if (s.heat === 1) return "heat1";
+    if (s.cold === 1) return "cold1";
+    return "fine";
+  }
+  // 미리보기용 예시 값
+  var DEMO = {
+    fine:  { t: 21.5, rh: 50, ws: 2.1, clock: 14 * 60 + 10 },
+    heat1: { t: 31.2, rh: 58, ws: 1.4, clock: 13 * 60 + 20 },
+    heat:  { t: 35.8, rh: 62, ws: 1.1, clock: 14 * 60 + 30 },
+    cold1: { t: -1.5, rh: 45, ws: 4.0, clock: 10 * 60 + 30 },
+    cold:  { t: -9.0, rh: 40, ws: 6.0, clock: 9 * 60 + 40 },
+    rain:  { t: 17.0, rh: 92, ws: 3.0, clock: 15 * 60, rain: true },
+    dusk:  { t: 16.0, rh: 55, ws: 2.0 },
+    night: { t: 12.0, rh: 60, ws: 1.5 }
+  };
+
+  // ----- 그리기 도구 -----
+  function mk(tag, attrs, parent) {
+    var e = document.createElementNS(NS, tag);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(e);
+    return e;
+  }
+  function frag(str, parent) { var g = mk("g", {}, parent); g.innerHTML = str; return g; }
+
+  // 여행자 그림 (발이 0,0 / 오른쪽을 봐요). upper는 허리 위, tool은 손에 든 물건
+  var ART = {
+    // 배낭 멘 여행자 (모자, 카메라)
+    hiker:
+      '<ellipse cx="0" cy="0" rx="16" ry="3.5" fill="rgba(0,0,0,.18)"/>'
+    + '<path d="M-10,-34 L-11,-2 L-2,-2 L0,-20 L2,-2 L11,-2 L10,-34 Z" fill="#3d4f6b"/>'
+    + '<rect x="-13" y="-5" width="11" height="5" rx="2" fill="' + OINK + '"/><rect x="2" y="-5" width="11" height="5" rx="2" fill="' + OINK + '"/>'
+    + '<g class="upper">'
+    +   '<rect x="-24" y="-66" width="15" height="30" rx="5" fill="#f4a261" stroke="' + OINK + '" stroke-width="2"/>'
+    +   '<path d="M-13,-66 Q0,-72 13,-66 L12,-32 L-12,-32 Z" fill="#2f8fbf"/>'
+    +   '<path d="M-8,-67 L-4,-36" stroke="#c97a3a" stroke-width="3"/>'
+    +   '<circle cx="0" cy="-80" r="12.5" fill="#f5cfa8"/>'
+    +   '<path d="M-13,-82 Q-12,-96 1,-95 Q13,-95 13,-83 Z" fill="#e4572e"/><path d="M5,-85 L23,-84 L21,-81 L5,-82 Z" fill="#c4441f"/>'
+    +   '<circle cx="5" cy="-79" r="1.8" fill="' + OINK + '"/><circle cx="-3" cy="-79" r="1.8" fill="' + OINK + '"/>'
+    +   '<path d="M0,-73 q3,3 6,0" stroke="' + OINK + '" stroke-width="2" fill="none" stroke-linecap="round"/>'
+    +   '<circle cx="8" cy="-75" r="2.4" fill="#f3a39a"/>'
+    +   '<g class="tool"><rect x="14" y="-50" width="15" height="11" rx="2" fill="#5b6b8c" stroke="' + OINK + '" stroke-width="1.5"/><circle cx="21.5" cy="-44.5" r="3" fill="#cfe3ff"/>'
+    +     '<circle class="flash" cx="28" cy="-52" r="6" fill="#fffbe0" opacity="0"/></g>'
+    +   '<path d="M11,-60 Q19,-50 17,-42" stroke="#f5cfa8" stroke-width="5" fill="none" stroke-linecap="round"/>'
+    + '</g>',
+    // 챙 넓은 모자 쓴 여행자 (지도)
+    sunhat:
+      '<ellipse cx="0" cy="0" rx="16" ry="3.5" fill="rgba(0,0,0,.18)"/>'
+    + '<path d="M-11,-32 L-13,-2 L-3,-2 L0,-18 L3,-2 L13,-2 L11,-32 Z" fill="#6aa86a"/>'
+    + '<rect x="-14" y="-5" width="11" height="5" rx="2" fill="#a05a3a"/><rect x="3" y="-5" width="11" height="5" rx="2" fill="#a05a3a"/>'
+    + '<g class="upper">'
+    +   '<path d="M-13,-64 Q0,-70 13,-64 L11,-30 L-11,-30 Z" fill="#ffd166"/>'
+    +   '<path d="M-13,-80 Q-13,-93 0,-93 Q13,-93 13,-80 L14,-64 Q10,-76 0,-84 Q-10,-76 -14,-64 Z" fill="#5a3a26"/>'
+    +   '<circle cx="0" cy="-79" r="12" fill="#f7d3b0"/>'
+    +   '<ellipse cx="0" cy="-89" rx="22" ry="5" fill="#f2d28b" stroke="' + OINK + '" stroke-width="1.5"/>'
+    +   '<path d="M-11,-89 Q0,-106 11,-89 Z" fill="#f2d28b" stroke="' + OINK + '" stroke-width="1.5"/><path d="M-11,-90 H11" stroke="#e4572e" stroke-width="3"/>'
+    +   '<circle cx="5" cy="-79" r="1.8" fill="' + OINK + '"/><circle cx="-3" cy="-79" r="1.8" fill="' + OINK + '"/>'
+    +   '<path d="M0,-73 q3,3 6,0" stroke="' + OINK + '" stroke-width="2" fill="none" stroke-linecap="round"/>'
+    +   '<g class="tool"><path d="M13,-52 L20,-55 L27,-52 L33,-55 V-40 L27,-37 L20,-40 L13,-37 Z" fill="#fff3d1" stroke="' + OINK + '" stroke-width="1.5" stroke-linejoin="round"/><circle cx="24" cy="-47" r="2" fill="#d64545"/></g>'
+    +   '<path d="M10,-58 Q17,-50 15,-42" stroke="#f7d3b0" stroke-width="5" fill="none" stroke-linecap="round"/>'
+    + '</g>'
+  };
+
+  function skyFor(mode) {
+    return { fine: ["#8fd0ef", "#d8f0f7"], heat1: ["#f7c67a", "#fde7b8"], heat: ["#f59a5a", "#fbd28a"], cold1: ["#a9c7df", "#e3edf4"],
+             cold: ["#9fb3c8", "#e6edf3"], rain: ["#8e9eae", "#cdd6de"], dusk: ["#f08a5d", "#f9cf8e"], night: ["#1d2a4a", "#3a4a70"] }[mode];
+  }
+  var SPOT = { museum: 112, photo: 214, trip: 360, shade: 318, bench: 440, cafe: 522, hotel: 715 };
+
+  function buildScene(mode) {
+    scene.innerHTML = "";
+    var sky = skyFor(mode), night = mode === "night", cold = mode.indexOf("cold") === 0, wet = mode === "rain";
+    var win = night ? "#ffe39a" : "#cfe8f5";
+    var defs = mk("defs", {}, scene);
+    var grad = mk("linearGradient", { id: "oSky", x1: 0, y1: 0, x2: 0, y2: 1 }, defs);
+    mk("stop", { offset: "0", "stop-color": sky[0] }, grad);
+    mk("stop", { offset: "1", "stop-color": sky[1] }, grad);
+    mk("rect", { x: 0, y: 0, width: 800, height: 360, fill: "url(#oSky)" }, scene);
+
+    // 해 / 달 / 별 / 비구름
+    if (night) {
+      for (var i = 0; i < 18; i++) {
+        var st = mk("circle", { cx: (i * 47 + 23) % 800, cy: 20 + (i * 37) % 120, r: i % 3 ? 1.4 : 2.2, fill: "#fff6c8" }, scene);
+        if (!REDUCED) st.style.animation = "o-tw 2.4s " + (i * 0.2).toFixed(1) + "s ease-in-out infinite alternate";
+      }
+      frag('<path d="M640,40 A28,28 0 1 0 668,86 A22,22 0 1 1 640,40 Z" fill="#ffe7a0"/>', scene);
+    } else if (wet) {
+      frag('<g fill="#e7ecf0" opacity=".95"><ellipse cx="160" cy="70" rx="80" ry="26"/><ellipse cx="220" cy="56" rx="50" ry="24"/>'
+         + '<ellipse cx="560" cy="60" rx="90" ry="28"/><ellipse cx="640" cy="78" rx="60" ry="22"/></g>', scene);
+    } else {
+      var sx = mode === "dusk" ? 600 : 640, sy = mode === "dusk" ? 170 : 60;
+      var sc = mode === "heat" ? "#ff6a3d" : mode === "dusk" ? "#ff8a4d" : cold ? "#fff4c9" : "#ffd447";
+      var s = frag('<circle cx="' + sx + '" cy="' + sy + '" r="' + (mode === "heat" ? 34 : 26) + '" fill="' + sc + '"/>', scene);
+      if (mode === "heat" && !REDUCED) { s.style.transformOrigin = sx + "px " + sy + "px"; s.style.animation = "o-pulse 1s ease-in-out infinite alternate"; }
+    }
+
+    // 산과 바다, 땅
+    frag('<path d="M0,230 Q90,150 190,210 Q270,140 380,205 Q470,150 560,200 Q660,130 800,210 L800,300 L0,300 Z" fill="'
+       + (night ? "#26384a" : cold ? "#b9c9c2" : wet ? "#8fae8a" : "#9cc58a") + '"/>', scene);
+    if (mode === "dusk") mk("rect", { x: 0, y: 175, width: 800, height: 60, fill: "#f9cf8e", opacity: .25 }, scene);
+    mk("rect", { x: 0, y: 250, width: 800, height: 110, fill: night ? "#2b3d2e" : cold ? "#dfe6dc" : wet ? "#a9c493" : "#b9d98f" }, scene);
+    mk("rect", { x: 0, y: 296, width: 800, height: 14, fill: night ? "#3a4038" : "#d9cfb4", opacity: .8 }, scene);   // 산책길
+
+    // 박물관 (실내 명소, 왼쪽)
+    frag('<rect x="44" y="214" width="136" height="86" fill="' + (night ? "#5c5446" : "#f3ead6") + '" stroke="' + OINK + '" stroke-width="3"/>'
+       + '<path d="M34,216 L112,176 L190,216 Z" fill="#c9b48a" stroke="' + OINK + '" stroke-width="3" stroke-linejoin="round"/>'
+       + '<rect x="56" y="228" width="10" height="72" fill="#e6dcc3" stroke="' + OINK + '" stroke-width="2"/><rect x="158" y="228" width="10" height="72" fill="#e6dcc3" stroke="' + OINK + '" stroke-width="2"/>'
+       + '<rect x="96" y="250" width="32" height="50" fill="#8a5a2b" stroke="' + OINK + '" stroke-width="2"/>'
+       + '<rect x="76" y="232" width="14" height="14" fill="' + win + '" stroke="' + OINK + '" stroke-width="2"/><rect x="134" y="232" width="14" height="14" fill="' + win + '" stroke="' + OINK + '" stroke-width="2"/>'
+       + '<rect x="58" y="190" width="108" height="18" rx="4" fill="#fffdf6" stroke="' + OINK + '" stroke-width="2"/>'
+       + '<text x="112" y="204" text-anchor="middle" font-family="Jua, sans-serif" font-size="12" fill="' + OINK + '">박물관·실내 명소</text>', scene);
+
+    // 포토존 꽃밭
+    var fl = mk("g", {}, scene);
+    for (var c = 0; c < 9; c++) {
+      var px = 206 + c * 11, py = 290 - (c % 2) * 6;
+      if (cold) { frag('<circle cx="' + px + '" cy="' + py + '" r="3" fill="#ffffff"/>', fl); continue; }
+      frag('<path d="M' + px + ',' + (py + 8) + ' V' + py + '" stroke="#4f9a4a" stroke-width="2"/>'
+         + '<circle cx="' + px + '" cy="' + py + '" r="4" fill="' + ["#ff7aa2", "#ffd166", "#ff9f6e"][c % 3] + '"/>', fl);
+    }
+    frag('<rect x="278" y="248" width="4" height="44" fill="#7a5132"/><rect x="248" y="234" width="64" height="20" rx="5" fill="#fffdf6" stroke="' + OINK + '" stroke-width="2"/>'
+       + '<text x="280" y="249" text-anchor="middle" font-family="Jua, sans-serif" font-size="12" fill="' + OINK + '">📸 포토존</text>', scene);
+
+    // 나무 그늘과 벤치
+    var leaf = night ? "#23432c" : cold ? "#9aa99d" : "#4f9a4a", leaf2 = night ? "#284d33" : cold ? "#a7b5a9" : "#5aa654";
+    frag('<rect x="350" y="200" width="14" height="70" rx="5" fill="#7a5132"/>'
+       + '<circle cx="357" cy="190" r="42" fill="' + leaf + '"/><circle cx="330" cy="205" r="26" fill="' + leaf2 + '"/><circle cx="384" cy="207" r="26" fill="' + leaf2 + '"/>'
+       + '<ellipse cx="357" cy="298" rx="62" ry="8" fill="rgba(0,0,0,.12)"/>'
+       + '<rect x="414" y="282" width="52" height="7" rx="3" fill="#8a5a2b"/><rect x="418" y="289" width="5" height="12" fill="#6f4724"/><rect x="457" y="289" width="5" height="12" fill="#6f4724"/>', scene);
+
+    // 카페
+    var stripes = "";
+    for (var k = 0; k < 6; k++) stripes += '<path d="M' + (468 + k * 18) + ',226 h18 v12 q-9,8 -18,0 Z" fill="' + (k % 2 ? "#fffdf6" : "#e4572e") + '" stroke="' + OINK + '" stroke-width="1.5"/>';
+    frag('<rect x="472" y="226" width="100" height="74" fill="' + (night ? "#5c5446" : "#fbeee0") + '" stroke="' + OINK + '" stroke-width="3"/>'
+       + stripes
+       + '<rect x="506" y="256" width="30" height="44" fill="#8a5a2b" stroke="' + OINK + '" stroke-width="2"/>'
+       + '<rect x="480" y="250" width="20" height="20" fill="' + win + '" stroke="' + OINK + '" stroke-width="2"/><rect x="544" y="250" width="20" height="20" fill="' + win + '" stroke="' + OINK + '" stroke-width="2"/>'
+       + '<rect x="484" y="200" width="76" height="20" rx="5" fill="#fffdf6" stroke="' + OINK + '" stroke-width="2"/>'
+       + '<text x="522" y="215" text-anchor="middle" font-family="Jua, sans-serif" font-size="13" fill="' + OINK + '">☕ 카페</text>', scene);
+
+    // 숙소 (오른쪽)
+    var wins = "";
+    for (var r = 0; r < 3; r++) for (var q = 0; q < 4; q++) {
+      var lit = night ? ((r + q) % 3 ? "#ffe39a" : "#4a4a5a") : "#cfe8f5";
+      wins += '<rect x="' + (664 + q * 26) + '" y="' + (182 + r * 26) + '" width="16" height="16" fill="' + lit + '" stroke="' + OINK + '" stroke-width="2"/>';
+    }
+    frag('<rect x="652" y="166" width="126" height="134" fill="' + (night ? "#6b5e4c" : "#fbf3dd") + '" stroke="' + OINK + '" stroke-width="3"/>'
+       + '<rect x="646" y="158" width="138" height="12" fill="#a05a3a" stroke="' + OINK + '" stroke-width="3"/>' + wins
+       + '<rect x="700" y="260" width="30" height="40" fill="#8a5a2b" stroke="' + OINK + '" stroke-width="2"/>'
+       + '<rect x="672" y="134" width="86" height="20" rx="5" fill="#fffdf6" stroke="' + OINK + '" stroke-width="2"/>'
+       + '<text x="715" y="149" text-anchor="middle" font-family="Jua, sans-serif" font-size="13" fill="' + OINK + '">🏨 숙소</text>'
+       + (cold ? '<rect x="756" y="136" width="10" height="22" fill="#8a7a6a"/><circle class="o-smk" cx="761" cy="128" r="8" fill="#e8e8e8"/><circle class="o-smk" style="animation-delay:1.2s" cx="761" cy="128" r="8" fill="#e8e8e8"/>' : ""), scene);
+
+    // 날씨 효과
+    var fx = mk("g", {}, scene);
+    if (cold) {
+      for (var n = 0; n < (mode === "cold" ? 36 : 14); n++) {
+        var f = mk("circle", { cx: (n * 61) % 800, cy: -10, r: 2 + (n % 3), fill: "#ffffff", opacity: .9 }, fx);
+        if (!REDUCED) f.style.animation = "o-snow " + (5 + (n % 5)) + "s " + (-(n * 0.37)).toFixed(2) + "s linear infinite";
+        else f.setAttribute("cy", 30 + (n * 53) % 260);
+      }
+    }
+    if (wet) {
+      for (var m = 0; m < 46; m++) {
+        var d = mk("line", { x1: (m * 37) % 820, y1: -20, x2: (m * 37) % 820 - 6, y2: -4, stroke: "#5b86b5", "stroke-width": 2, "stroke-linecap": "round", opacity: .8 }, fx);
+        if (!REDUCED) d.style.animation = "o-rain " + (0.9 + (m % 4) * 0.15).toFixed(2) + "s " + (-(m * 0.11)).toFixed(2) + "s linear infinite";
+        else d.setAttribute("transform", "translate(0," + (40 + (m * 41) % 240) + ")");
+      }
+    }
+    if (mode === "heat" || mode === "heat1") {
+      for (var h = 0; h < 5; h++) {
+        var w = mk("path", { d: "M" + (60 + h * 150) + ",250 q8,-10 0,-20 q-8,-10 0,-20", stroke: "#fff1d0", "stroke-width": 3, fill: "none", opacity: .7 }, fx);
+        if (!REDUCED) w.style.animation = "o-haze 2s " + (h * 0.4) + "s ease-in-out infinite";
+      }
+    }
+    if (REDUCED) Array.prototype.forEach.call(scene.querySelectorAll(".o-smk"), function (x) { x.remove(); });
+    else Array.prototype.forEach.call(scene.querySelectorAll(".o-smk"), function (x) { x.style.animation = "o-smk 3s ease-out infinite " + (x.style.animationDelay || "0s"); });
+
+    world = { mode: mode, chars: mk("g", {}, scene), bubbles: mk("g", {}, scene), list: [], timers: [] };
+  }
+
+  // ----- 캐릭터 -----
+  // 단계: say(말풍선), photo(사진 찍기), wait, walk/run(to x), enter(건물로 들어감), shiver, sit, rest, alert(깜짝), loop
+  function addChar(kind, x, opts) {
+    var g = mk("g", {}, world.chars), art, upper = null, tool = null, flash = null;
+    if (kind === "trip") {   // 여행이 (공룡 친구): 위쪽 화면과 같은 그림을 작게 넣어요
+      art = mk("g", {}, g);
+      art.innerHTML = travelerSVG(opts.mood || "sunny");
+      var sv = art.querySelector("svg");
+      if (sv) { sv.setAttribute("x", -44); sv.setAttribute("y", -100); sv.setAttribute("width", 88); sv.setAttribute("height", 101); }
+    } else {
+      art = frag(ART[kind], g);
+      upper = art.querySelector(".upper"); tool = art.querySelector(".tool"); flash = art.querySelector(".flash");
+    }
+    var ch = { kind: kind, g: g, upper: upper, tool: tool, flash: flash, x: x, y: GROUND, dir: opts.dir || 1, scale: opts.scale || 1,
+               lift: opts.lift || 0, steps: opts.steps || [], i: 0, t: 0, alpha: 1 };
+    world.list.push(ch);
+    return ch;
+  }
+  function headTop(ch) { return (ch.kind === "trip" ? 106 : 112) * ch.scale + (ch.lift || 0); }
+  function bubble(ch, text, dur) {
+    var b = mk("g", {}, world.bubbles), top = headTop(ch);
+    var w = Math.max(60, text.length * 15 + 24), bx = Math.min(Math.max(ch.x - w / 2, 6), 794 - w);
+    mk("rect", { x: bx, y: GROUND - top - 30, width: w, height: 30, rx: 15, fill: "#ffffff", stroke: OINK, "stroke-width": 2 }, b);
+    mk("path", { d: "M" + (ch.x - 6) + "," + (GROUND - top) + " L" + ch.x + "," + (GROUND - top + 10) + " L" + (ch.x + 6) + "," + (GROUND - top), fill: "#ffffff", stroke: OINK, "stroke-width": 2 }, b);
+    mk("rect", { x: ch.x - 7, y: GROUND - top - 2, width: 14, height: 4, fill: "#ffffff" }, b);
+    var t = mk("text", { x: bx + w / 2, y: GROUND - top - 10, "text-anchor": "middle", "font-family": "Jua, sans-serif", "font-size": 16, fill: OINK }, b);
+    t.textContent = text;
+    b.style.animation = "o-pop .25s ease-out";
+    world.timers.push(setTimeout(function () { b.remove(); }, (dur || 2.4) * 1000));
+  }
+  function alertMark(ch) {
+    var m = mk("text", { x: ch.x + 16, y: GROUND - headTop(ch) + 6, "font-family": "Jua, sans-serif", "font-size": 34, fill: "#e0402a", stroke: "#fff", "stroke-width": 3, "paint-order": "stroke" }, world.bubbles);
+    m.textContent = "!";
+    m.style.animation = "o-pop .25s ease-out";
+    world.timers.push(setTimeout(function () { m.remove(); }, 900));
+  }
+  function placeChar(ch, now) {
+    var st = ch.steps[ch.i] || { t: "idle" }, bobY = 0, bend = 0, jx = 0, phase = now / 1000;
+    if (st.t === "walk" || st.t === "run") bobY = -Math.abs(Math.sin(phase * (st.t === "run" ? 16 : 10))) * (st.t === "run" ? 5 : 3);
+    if (st.t === "alert") bobY = -Math.max(0, Math.sin(Math.min(ch.t / 0.35, 1) * Math.PI)) * 14;
+    if (st.t === "shiver") jx = Math.sin(phase * 60) * 1.6;
+    if (st.t === "hop") bobY = -Math.abs(Math.sin(phase * 6 + ch.x)) * 8;
+    if (st.t === "photo") bend = -4;
+    if (st.t === "rest") bend = 8;
+    if (st.t === "sit") bobY = 8;
+    if (REDUCED) { bobY = 0; jx = 0; }
+    ch.g.setAttribute("transform", "translate(" + (ch.x + jx).toFixed(1) + "," + (ch.y + bobY).toFixed(1) + ") scale(" + (ch.dir * ch.scale) + "," + ch.scale + ")");
+    if (ch.upper) ch.upper.setAttribute("transform", "rotate(" + bend.toFixed(1) + " 0 -32)");
+    if (ch.flash) ch.flash.style.animation = st.t === "photo" && !REDUCED ? "o-flash 1.6s linear infinite" : "none";
+    ch.g.style.opacity = ch.alpha;
+  }
+  function runStep(ch, dt) {
+    var st = ch.steps[ch.i];
+    if (!st) return;
+    if (ch.t === 0) {
+      if (st.say) bubble(ch, st.say, st.sayDur || 2.4);
+      if (st.t === "alert") alertMark(ch);
+      if (st.face) ch.dir = st.face;
+    }
+    ch.t += dt;
+    var done = false;
+    if (st.t === "walk" || st.t === "run") {
+      var sp = (st.t === "run" ? 110 : 55) * (REDUCED ? 3 : 1), dx = st.to - ch.x;
+      ch.dir = dx >= 0 ? 1 : -1;
+      if (Math.abs(dx) <= sp * dt) { ch.x = st.to; done = true; } else ch.x += ch.dir * sp * dt;
+    } else if (st.t === "enter") {
+      ch.alpha = Math.max(0, 1 - ch.t / 0.6); done = ch.t >= 0.6;
+    } else if (st.t === "loop") {
+      ch.i = st.back; ch.t = 0; ch.alpha = 1; return;
+    } else done = ch.t >= (st.dur || 1);
+    if (done) { ch.i++; ch.t = 0; }
+  }
+  function tick(now) {
+    var dt = lastT == null ? 0 : Math.min(0.08, (now - lastT) / 1000);
+    lastT = now;
+    if (world && !document.getElementById("view-outside").hidden) world.list.forEach(function (ch) { runStep(ch, dt); placeChar(ch, now); });
+    requestAnimationFrame(tick);
+  }
+
+  // 상황별 연출: 여행자 두 명(hiker, sunhat)과 여행이(trip)
+  // 말풍선이 겹치지 않게 셋이 차례로 말해요 (A 0.6초 → B 3.4초 → C 6.2초쯤)
+  function W(d) { return { t: "wait", dur: d }; }
+  function stageFor(mode) {
+    if (world) world.timers.forEach(clearTimeout);
+    buildScene(mode);
+    var P = SPOT, mood = MODES[mode].mood;
+    if (mode === "fine") {
+      addChar("hiker", P.photo, { steps: [W(.6), { t: "photo", dur: 2.8, say: "경치 좋다! 사진 찍자 📸" }, { t: "photo", dur: 5.6 }, { t: "loop", back: 1 }] });
+      addChar("trip", P.trip, { mood: mood, dir: -1, steps: [{ t: "hop", dur: 3.4 }, { t: "hop", dur: 2.8, say: "브이~ ✌️" }, { t: "hop", dur: 2.8 }, { t: "loop", back: 0 }] });
+      addChar("sunhat", P.bench, { dir: -1, steps: [{ t: "sit", dur: 6.2 }, { t: "sit", dur: 2.8, say: "다음엔 어디 갈까?" }, { t: "loop", back: 0 }] });
+    } else if (mode === "heat1") {
+      addChar("hiker", P.photo, { steps: [W(.6), { t: "wait", dur: 2.4, say: "덥다 더워…" }, { t: "walk", to: P.shade }, { t: "rest", dur: 99 }] });
+      addChar("trip", P.trip, { mood: mood, dir: -1, steps: [W(3.4), { t: "wait", dur: 2.8, say: "그늘에서 물 마시고 가자" }, { t: "hop", dur: 99 }] });
+      addChar("sunhat", P.bench, { dir: -1, steps: [{ t: "sit", dur: 6.4 }, { t: "sit", dur: 2.6, say: "모자도 꼭 써!" }, { t: "sit", dur: 99 }] });
+    } else if (mode === "heat") {
+      addChar("hiker", P.photo, { steps: [{ t: "alert", dur: .8 }, { t: "wait", dur: 2.4, say: "너무 뜨거워! 카페로 가자" }, { t: "walk", to: P.cafe }, { t: "enter" }] });
+      addChar("trip", P.trip, { mood: mood, steps: [W(3.4), { t: "wait", dur: 2.6, say: "난 박물관! 시원하대" }, { t: "walk", to: P.museum }, { t: "enter" }] });
+      addChar("sunhat", P.bench, { dir: -1, steps: [{ t: "sit", dur: 6.2 }, { t: "wait", dur: 2.4, say: "숙소에서 쉬다 나올래" }, { t: "walk", to: P.hotel }, { t: "enter" }] });
+    } else if (mode === "cold1") {
+      addChar("hiker", P.photo, { steps: [W(.6), { t: "shiver", dur: 2.6, say: "목도리 하나 더 두를까" }, { t: "photo", dur: 99 }] });
+      addChar("trip", P.trip, { mood: mood, dir: -1, steps: [W(3.4), { t: "wait", dur: 2.6, say: "핫팩 챙겼어!" }, { t: "hop", dur: 99 }] });
+      addChar("sunhat", P.bench, { dir: -1, steps: [{ t: "sit", dur: 6.2 }, { t: "wait", dur: 2.6, say: "따뜻한 거 마시러 갈래?" }, { t: "walk", to: P.cafe }, { t: "enter" }] });
+    } else if (mode === "cold") {
+      addChar("hiker", P.photo, { steps: [{ t: "alert", dur: .8 }, { t: "shiver", dur: 2.4, say: "으~ 추워! 카페에서 녹이자" }, { t: "walk", to: P.cafe }, { t: "enter" }] });
+      addChar("trip", P.trip, { mood: mood, steps: [{ t: "shiver", dur: 3.4 }, { t: "wait", dur: 2.6, say: "실내 명소로 가자!" }, { t: "walk", to: P.museum }, { t: "enter" }] });
+      addChar("sunhat", P.bench, { dir: -1, steps: [{ t: "shiver", dur: 6.2 }, { t: "wait", dur: 2.2, say: "난 숙소로!" }, { t: "run", to: P.hotel }, { t: "enter" }] });
+    } else if (mode === "rain") {
+      addChar("hiker", P.photo, { steps: [{ t: "alert", dur: .8 }, { t: "wait", dur: 2.4, say: "비 온다! 길 미끄러워" }, { t: "walk", to: P.cafe }, { t: "enter" }] });
+      addChar("trip", P.trip, { mood: mood, steps: [W(3.4), { t: "wait", dur: 2.6, say: "박물관 가자!" }, { t: "walk", to: P.museum }, { t: "enter" }] });
+      addChar("sunhat", P.bench, { dir: -1, steps: [{ t: "sit", dur: 6.2 }, { t: "wait", dur: 2.4, say: "약은 지퍼백에 넣었지?" }, { t: "walk", to: P.cafe }, { t: "enter" }] });
+    } else if (mode === "dusk") {
+      addChar("hiker", P.photo, { steps: [W(.6), { t: "photo", dur: 2.8, say: "노을 사진 한 장만!" }, { t: "photo", dur: 5.2 }, { t: "walk", to: P.hotel }, { t: "enter" }] });
+      addChar("trip", P.trip, { mood: mood, dir: -1, steps: [W(3.4), { t: "wait", dur: 2.8, say: "해 지기 전에 숙소로 가자" }, W(2.4), { t: "walk", to: P.hotel }, { t: "enter" }] });
+      addChar("sunhat", P.bench, { dir: -1, steps: [{ t: "sit", dur: 6.4 }, { t: "wait", dur: 2.6, say: "산길은 금방 어두워져" }, { t: "walk", to: P.hotel }, { t: "enter" }] });
+    } else if (mode === "night") {
+      addChar("trip", 140, { mood: mood, steps: [{ t: "wait", dur: 2.4, say: "밤길은 밝은 데로 다니자" }, { t: "walk", to: P.hotel }, { t: "enter" }] });
+      var cat = mk("g", { transform: "translate(612,300)" }, world.chars);
+      frag('<ellipse cx="0" cy="0" rx="12" ry="3" fill="rgba(0,0,0,.25)"/><path d="M-12,-2 Q-12,-16 0,-16 Q12,-16 12,-2 Z" fill="#f2a65a"/>'
+         + '<circle cx="10" cy="-18" r="7" fill="#f2a65a"/><path d="M6,-24 L8,-30 L11,-24 M11,-24 L14,-29 L15,-22" fill="#f2a65a" stroke="#f2a65a" stroke-width="2"/>'
+         + '<circle cx="12" cy="-19" r="1.3" fill="' + OINK + '"/><path d="M-12,-6 Q-22,-10 -20,-20" stroke="#f2a65a" stroke-width="4" fill="none" stroke-linecap="round"/>', cat);
+      world.timers.push(setTimeout(function () { bubble({ kind: "cat", x: 612, scale: .6, lift: 0 }, "다들 숙소에 들어갔다옹", 3); }, 3200));
+    }
+  }
+
+  // ----- 화면 -----
+  function fmtDur(m) { m = Math.max(0, Math.round(m)); var h = Math.floor(m / 60), r = m % 60; return (h ? h + "시간 " : "") + r + "분"; }
+  function hm(min) { min = ((Math.round(min) % 1440) + 1440) % 1440; return pad(Math.floor(min / 60)) + ":" + pad(min % 60); }
+
+  function render() {
+    if (!scene) return;
+    var p = kstParts(0), now = p.h * 60 + p.min;
+    var sn = sun || sunCalc(dest.lat, dest.lon);
+    var w = wx, d = forced ? DEMO[forced] : null;
+    if (d) {
+      w = { t: d.t, rh: d.rh, ws: d.ws, rain: !!d.rain };
+      now = d.clock != null ? d.clock : forced === "dusk" ? sn.set - 35 : sn.set + 50;
+    }
+    if (!w) {
+      setText("oVerdict", "날씨를 불러오는 중…");
+      setText("catOutside", "불러오는 중…");
+      return;
+    }
+    var feelHot = heatIndex(w.t, w.rh), feelCold = windChill(w.t, w.ws);
+    var heat = w.t >= 25 ? estHeat(feelHot) : 0, cold = w.t <= 5 ? estCold(feelCold) : 0;
+    var dark = now >= sn.set || now < sn.rise;
+    var mode = forced || pickMode({ heat: heat, cold: cold, rain: w.rain, dark: dark, toDusk: sn.set - now });
+
+    document.getElementById("view-outside").className = "view " + MODES[mode].cls;
+    setText("oVerdict", MODES[mode].label);
+    setText("oClock", dest.name + " · " + hm(now) + (forced ? " (미리보기)" : isDemo() ? " (예시)" : ""));
+
+    setText("oTemp", isFinite(w.t) ? w.t.toFixed(1) + "℃" : "-");
+    setText("oTempSub", w.t >= 25 ? "체감 " + feelHot.toFixed(1) + "℃ (습도 " + w.rh + "%)"
+                       : w.t <= 5 ? "체감 " + feelCold.toFixed(1) + "℃ (바람 " + w.ws + "m/s)"
+                       : "습도 " + w.rh + "% · 바람 " + w.ws + "m/s");
+
+    var isCold = cold >= heat && (cold > 0 || w.t <= 10), lv = isCold ? cold : heat;
+    document.getElementById("oRiskTile").className = "tile " + (isCold ? "o-cold" : "o-heat");
+    setText("oRiskLabel", isCold ? "🥶 한파 위험 단계" : "🥵 폭염 위험 단계");
+    setText("oRisk", lv ? LV[lv] : "괜찮아요");
+    Array.prototype.forEach.call(document.querySelectorAll("#oRiskBar i"), function (i, k) { i.className = k < lv ? "on" : ""; });
+    setText("oRiskSub", "체감온도로 앱이 추정한 단계예요");
+
+    setText("oSun", hm(sn.set));
+    setText("oSunSub", dark ? (now >= sn.set ? "해가 진 지 " + fmtDur(now - sn.set) + " · 내일 해 뜸 " + hm(sn.rise) : "해 뜨는 시각 " + hm(sn.rise))
+                            : "앞으로 " + fmtDur(sn.set - now) + " · 어둑해지는 때 " + hm(sn.dusk));
+
+    setText("oTodoHint", HINT[mode]);
+    var ul = document.getElementById("oTodo");
+    ul.innerHTML = "";
+    TODO[mode].forEach(function (x) {
+      var li = el("li"), t = el("div");
+      li.appendChild(el("span", "who", x[0]));
+      t.appendChild(el("b", null, x[1])); t.appendChild(el("span", null, x[2]));
+      if (x[3]) { var a = document.createElement("a"); a.href = x[3]; a.textContent = x[3] === "#tour" ? "→ 가 볼 곳 보기" : "→ 약국·응급실 보기"; t.appendChild(a); }
+      li.appendChild(t); ul.appendChild(li);
+    });
+
+    var notes = [];
+    if (isDemo()) notes.push("지금은 예시 화면이에요.");
+    notes.push("해 지는 시각: " + (sn.src === "천문연" ? "한국천문연구원 출몰시각." : "천문연 자료를 못 받아 계산값으로 보여 줘요."));
+    notes.push("위험 단계는 기상청 공식 영향예보가 아니라 체감온도로 추정한 값이에요.");
+    setText("oNote", notes.join(" "));
+
+    if (!forced) setText("catOutside", MODES[mode].label + (isFinite(w.t) ? " · " + w.t.toFixed(1) + "℃" : ""));
+    var ico = document.getElementById("icoOutside");
+    if (ico) ico.innerHTML = travelerSVG(MODES[mode].mood);
+    Array.prototype.forEach.call(document.querySelectorAll("#oTry button"), function (b) { b.classList.toggle("on", b.dataset.mode === forced); });
+    if (!world || world.mode !== mode) stageFor(mode);
+  }
+
+  function init() {
+    scene = document.getElementById("oScene");
+    var tr = document.getElementById("oTry");
+    Object.keys(NAMES).forEach(function (k) {
+      var b = el("button", null, NAMES[k]);
+      b.type = "button"; b.dataset.mode = k;
+      b.onclick = function () { forced = forced === k ? null : k; render(); };
+      tr.appendChild(b);
+    });
+    var back = el("button", null, "지금 날씨로");
+    back.type = "button";
+    back.onclick = function () { forced = null; render(); };
+    tr.appendChild(back);
+    if (!rafOn) { rafOn = true; requestAnimationFrame(tick); }
+  }
+
+  return {
+    init: init,
+    // w: 초단기실황 {T1H, REH, WSD, PTY}. null이면 불러오기 실패
+    setWeather: function (w) {
+      if (!w) { wx = null; setText("oVerdict", "날씨를 불러오지 못했어요"); setText("catOutside", "날씨를 불러오지 못했어요"); return; }
+      var pty = String(w.PTY || "0");
+      wx = { t: Number(w.T1H), rh: Number(w.REH) || 0, ws: Number(w.WSD) || 0, rain: pty !== "0" && pty !== "" };
+      render();
+    },
+    // s: {rise, set, dusk} (분). null이면 계산값을 써요
+    setSun: function (s) { sun = s ? { rise: s.rise, set: s.set, dusk: s.dusk != null ? s.dusk : s.set + 28, src: "천문연" } : null; render(); },
+    reset: function () { wx = null; sun = null; if (world) world.mode = null; },
+    render: render
+  };
+})();
 
 (function init() {
   var sel = document.getElementById("dest");
@@ -1932,6 +2506,7 @@ function loadAll() {
     try { localStorage.setItem("trip-dest", sel.value); } catch (e) {}
     loadAll();
   });
+  OUT.init();
   document.getElementById("refreshBtn").addEventListener("click", function () { tourCache = {}; loadAll(); });
   document.getElementById("holiday").addEventListener("change", loadPharms);
   document.getElementById("tabOut").addEventListener("click", function () { loadTour("12"); });
