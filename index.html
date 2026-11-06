@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>여행 건강 지킴이</title>
+<script>
+// 구글 Apps Script 웹 앱 주소(…/exec). 인증키가 아니라서 공개돼도 괜찮습니다.
+var RELAY_URL = "";
+</script>
+<style>
+:root{
+  --bg:#f4f7f6; --card:#ffffff; --text:#1d2a27; --muted:#62736f; --line:#dde5e3;
+  --accent:#0f8b6d; --accent-soft:#e2f4ee; --warn:#b85c00; --warn-soft:#fff1e0; --danger:#c0392b; --danger-soft:#fde8e6;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#111816; --card:#1a2421; --text:#e6efec; --muted:#9db0ab; --line:#2b3a36;
+    --accent:#3cc59f; --accent-soft:#16352c; --warn:#f0a050; --warn-soft:#3a2a17; --danger:#ff7b6b; --danger-soft:#3d1d1a;
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;line-height:1.5}
+header{padding:20px 16px 8px;max-width:760px;margin:0 auto}
+h1{margin:0;font-size:1.4rem}
+.sub{color:var(--muted);font-size:.9rem;margin-top:2px}
+main{max-width:760px;margin:0 auto;padding:0 16px 40px}
+.notice{background:var(--warn-soft);color:var(--warn);border-radius:10px;padding:10px 12px;margin:10px 0;font-size:.9rem}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+select,input,button{font:inherit;color:inherit}
+select,input{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px 10px;min-width:0}
+button{background:var(--accent);color:#fff;border:0;border-radius:8px;padding:8px 14px;cursor:pointer}
+button.ghost{background:var(--card);color:var(--accent);border:1px solid var(--line)}
+.tabs{display:flex;gap:6px;overflow-x:auto;margin:14px 0 10px;padding-bottom:4px}
+.tabs button{background:var(--card);color:var(--text);border:1px solid var(--line);white-space:nowrap}
+.tabs button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin:10px 0}
+.card h3{margin:0 0 6px;font-size:1.05rem}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px}
+.stat{background:var(--accent-soft);border-radius:10px;padding:10px}
+.stat b{display:block;font-size:1.25rem}
+.stat span{color:var(--muted);font-size:.85rem}
+.hours{display:flex;gap:8px;overflow-x:auto}
+.hour{min-width:72px;text-align:center;background:var(--bg);border-radius:10px;padding:8px 4px;font-size:.9rem}
+.tip{border-radius:10px;padding:8px 10px;margin:6px 0;font-size:.95rem;background:var(--accent-soft)}
+.tip.warn{background:var(--warn-soft);color:var(--warn)}
+.tip.danger{background:var(--danger-soft);color:var(--danger)}
+.muted{color:var(--muted);font-size:.9rem}
+.item{display:flex;gap:12px}
+.item img{width:84px;height:84px;object-fit:cover;border-radius:8px;flex:none;background:var(--line)}
+.item .body{min-width:0}
+a{color:var(--accent)}
+.badge{display:inline-block;font-size:.75rem;padding:1px 8px;border-radius:99px;background:var(--accent-soft);color:var(--accent);margin-left:6px}
+details summary{cursor:pointer;color:var(--accent);margin-top:6px}
+.err{background:var(--danger-soft);color:var(--danger);border-radius:10px;padding:10px 12px}
+footer{max-width:760px;margin:0 auto;padding:0 16px 30px;color:var(--muted);font-size:.8rem}
+</style>
+</head>
+<body>
+<header>
+  <h1>🧳 여행 건강 지킴이</h1>
+  <div class="sub">여행지 날씨 · 볼거리 · 근처 약국과 응급실 · 상비약 정보</div>
+</header>
+<main>
+  <div id="relayNotice" class="notice" hidden>지금은 예시 화면입니다. 구글 중계 주소를 RELAY_URL에 넣어 주세요.</div>
+
+  <div class="row">
+    <select id="dest" aria-label="여행지"></select>
+    <button class="ghost" id="locBtn" type="button">📍 내 위치</button>
+  </div>
+
+  <nav class="tabs" id="tabs">
+    <button data-tab="weather" class="on">🌤️ 날씨</button>
+    <button data-tab="tour">🏞️ 관광지</button>
+    <button data-tab="festival">🎉 축제</button>
+    <button data-tab="pharmacy">💊 약국</button>
+    <button data-tab="er">🚑 응급실</button>
+    <button data-tab="drug">🔎 약 찾기</button>
+  </nav>
+
+  <section id="view"></section>
+</main>
+<footer>
+  자료: 기상청, 한국관광공사, 국립중앙의료원, 한국천문연구원, 식품의약품안전처 (공공데이터포털).
+  응급 상황에서는 119, 의료 상담은 119 또는 129(보건복지상담센터)에 연락하세요.
+</footer>
+
+<script>
+(function(){
+"use strict";
+
+/* ---------- 여행지 ---------- */
+var DESTS = [
+  {name:"서울", lat:37.5665, lon:126.9780, areaCode:"1"},
+  {name:"부산 해운대", lat:35.1587, lon:129.1604, areaCode:"6"},
+  {name:"제주시", lat:33.4996, lon:126.5312, areaCode:"39"},
+  {name:"서귀포", lat:33.2541, lon:126.5601, areaCode:"39"},
+  {name:"강릉", lat:37.7519, lon:128.8761, areaCode:"32"},
+  {name:"속초", lat:38.2070, lon:128.5918, areaCode:"32"},
+  {name:"경주", lat:35.8562, lon:129.2247, areaCode:"35"},
+  {name:"전주 한옥마을", lat:35.8151, lon:127.1530, areaCode:"37"},
+  {name:"여수", lat:34.7604, lon:127.6622, areaCode:"38"},
+  {name:"인천", lat:37.4563, lon:126.7052, areaCode:"2"},
+  {name:"대전", lat:36.3504, lon:127.3845, areaCode:"3"},
+  {name:"대구", lat:35.8714, lon:128.6014, areaCode:"4"},
+  {name:"광주", lat:35.1595, lon:126.8526, areaCode:"5"},
+  {name:"춘천", lat:37.8813, lon:127.7298, areaCode:"32"},
+  {name:"안동", lat:36.5684, lon:128.7294, areaCode:"35"},
+  {name:"통영", lat:34.8544, lon:128.4331, areaCode:"36"}
+];
+var current = DESTS[0];
+var tab = "weather";
+var USE_RELAY = !!(RELAY_URL && RELAY_URL.trim());
+
+/* ---------- 공통 ---------- */
+var $ = function(id){ return document.getElementById(id); };
+function esc(s){
+  return String(s == null ? "" : s).replace(/[&<>"']/g, function(c){
+    return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+  });
+}
+function plain(s){ return String(s == null ? "" : s).replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim(); }
+function kst(minusMin){ return new Date(Date.now() + 9*3600e3 - (minusMin||0)*60e3); }
+function pad(n){ return (n<10?"0":"") + n; }
+function ymd(d){ return d.getUTCFullYear() + pad(d.getUTCMonth()+1) + pad(d.getUTCDate()); }
+function hhmm(s){ s = String(s||"").trim(); return s.length >= 4 ? s.slice(0,2) + ":" + s.slice(2,4) : (s || "-"); }
+function fmtDate(s){ s = String(s||""); return s.length === 8 ? s.slice(0,4)+"."+s.slice(4,6)+"."+s.slice(6,8) : s; }
+function tel(t){ return t ? '<a href="tel:' + esc(String(t).replace(/[^0-9+]/g,"")) + '">' + esc(t) + '</a>' : ""; }
+function mapLink(name, addr){
+  return '<a target="_blank" rel="noopener" href="https://map.naver.com/p/search/' + encodeURIComponent((addr||"") + " " + (name||"")) + '">지도</a>';
+}
+
+function list(res){
+  var b = res && res.response && res.response.body;
+  if (!b || !b.items) return [];
+  if (Array.isArray(b.items)) return b.items;
+  var it = b.items.item;
+  if (!it) return [];
+  return Array.isArray(it) ? it : [it];
+}
+
+function call(op, params){
+  if (!USE_RELAY) return Promise.resolve(sample(op, params));
+  var qs = "op=" + encodeURIComponent(op);
+  Object.keys(params||{}).forEach(function(k){ qs += "&" + encodeURIComponent(k) + "=" + encodeURIComponent(params[k]); });
+  return fetch(RELAY_URL.trim() + "?" + qs).then(function(r){ return r.json(); }).then(function(j){
+    if (!j.ok) throw new Error(j.error || ((j.resultCode||"") + " " + (j.resultMsg||"")).trim() || "오류");
+    return j;
+  });
+}
+
+function loading(msg){ $("view").innerHTML = '<div class="card muted">' + esc(msg || "불러오는 중…") + '</div>'; }
+function fail(e){ return '<div class="err">불러오지 못했어요: ' + esc(e && e.message || e) + '</div>'; }
+var token = 0;
+
+/* ---------- 기상청 격자 변환 (위경도 → nx, ny) ---------- */
+function toGrid(lat, lon){
+  var RE=6371.00877, GRID=5.0, SLAT1=30.0, SLAT2=60.0, OLON=126.0, OLAT=38.0, XO=43, YO=136;
+  var D=Math.PI/180, re=RE/GRID, s1=SLAT1*D, s2=SLAT2*D, olon=OLON*D, olat=OLAT*D;
+  var sn=Math.log(Math.cos(s1)/Math.cos(s2))/Math.log(Math.tan(Math.PI*0.25+s2*0.5)/Math.tan(Math.PI*0.25+s1*0.5));
+  var sf=Math.pow(Math.tan(Math.PI*0.25+s1*0.5),sn)*Math.cos(s1)/sn;
+  var ro=re*sf/Math.pow(Math.tan(Math.PI*0.25+olat*0.5),sn);
+  var ra=re*sf/Math.pow(Math.tan(Math.PI*0.25+lat*D*0.5),sn);
+  var th=lon*D-olon; if(th>Math.PI) th-=2*Math.PI; if(th<-Math.PI) th+=2*Math.PI; th*=sn;
+  return {nx:Math.floor(ra*Math.sin(th)+XO+0.5), ny:Math.floor(ro-ra*Math.cos(th)+YO+0.5)};
+}
+
+/* ---------- 날씨 ---------- */
+var SKY = {"1":"☀️ 맑음","3":"⛅ 구름많음","4":"☁️ 흐림"};
+var PTY = {"0":"","1":"🌧️ 비","2":"🌨️ 비/눈","3":"❄️ 눈","5":"🌦️ 빗방울","6":"🌨️ 빗방울·눈날림","7":"❄️ 눈날림"};
+
+function healthTips(n){
+  var t = Number(n.T1H), h = Number(n.REH), w = Number(n.WSD), p = String(n.PTY||"0"), tips = [];
+  if (t >= 33) tips.push(["danger","🥵 폭염 수준이에요. 한낮(12~17시) 야외 활동을 줄이고, 물을 자주 마시고, 어지러우면 바로 그늘에서 쉬세요."]);
+  else if (t >= 28) tips.push(["warn","☀️ 더워요. 모자·양산을 챙기고 땀을 많이 흘리면 물과 함께 염분도 보충하세요."]);
+  if (t <= -10) tips.push(["danger","🥶 한파 수준이에요. 귀·손끝 동상에 주의하고 오래 밖에 있지 마세요."]);
+  else if (t <= 0) tips.push(["warn","🧣 영하예요. 겹쳐 입고 빙판길 낙상을 조심하세요."]);
+  if (h >= 0 && h < 35) tips.push(["","💧 건조해요. 물을 자주 마시고 립밤·보습제를 챙기세요."]);
+  if (h >= 85 && t >= 25) tips.push(["warn","😓 덥고 습해서 체감 온도가 더 높아요. 무리한 일정은 피하세요."]);
+  if (p !== "0" && p !== "") tips.push(["warn","☔ 비나 눈이 와요. 우산을 챙기고 미끄러운 길을 조심하세요."]);
+  if (w >= 9) tips.push(["warn","💨 바람이 강해요(" + w + "m/s). 해안·산길 산책은 조심하세요."]);
+  if (!tips.length) tips.push(["","😊 여행하기 무난한 날씨예요. 그래도 물은 챙기세요."]);
+  return tips.map(function(x){ return '<div class="tip ' + x[0] + '">' + esc(x[1]) + '</div>'; }).join("");
+}
+
+function daylen(rise, set){
+  rise = String(rise||"").trim(); set = String(set||"").trim();
+  if (rise.length < 4 || set.length < 4) return "-";
+  var m = (+set.slice(0,2)*60 + +set.slice(2,4)) - (+rise.slice(0,2)*60 + +rise.slice(2,4));
+  return Math.floor(m/60) + "시간 " + (m%60) + "분";
+}
+
+function showWeather(my){
+  loading("날씨 불러오는 중…");
+  var g = toGrid(current.lat, current.lon);
+  var nb = kst(40), fb = kst(45), today = ymd(kst(0));
+  var pN = call("ncst", {base_date: ymd(nb), base_time: pad(nb.getUTCHours()) + "00", nx: g.nx, ny: g.ny});
+  var pF = call("fcst", {base_date: ymd(fb), base_time: pad(fb.getUTCHours()) + "30", nx: g.nx, ny: g.ny});
+  var pS = call("sun", {locdate: today, longitude: current.lon.toFixed(2), latitude: current.lat.toFixed(2)});
+
+  Promise.allSettled([pN, pF, pS]).then(function(r){
+    if (my !== token) return;
+    var html = "";
+    if (r[0].status === "fulfilled"){
+      var n = {};
+      list(r[0].value).forEach(function(it){ n[it.category] = it.obsrValue; });
+      html += '<div class="card"><h3>' + esc(current.name) + ' 지금 날씨</h3><div class="grid">' +
+        stat((n.T1H!=null?n.T1H+"°C":"-"), "기온") +
+        stat((n.REH!=null?n.REH+"%":"-"), "습도") +
+        stat((n.WSD!=null?n.WSD+"m/s":"-"), "바람") +
+        stat((n.RN1!=null && n.RN1!=="0" ? n.RN1 + "mm" : (PTY[n.PTY]||"없음")), "1시간 강수") +
+        '</div><h3 style="margin-top:12px">🩺 건강 한마디</h3>' + healthTips(n) + '</div>';
+    } else html += '<div class="card">' + fail(r[0].reason) + '</div>';
+
+    if (r[2].status === "fulfilled"){
+      var s = list(r[2].value)[0] || {};
+      html += '<div class="card"><h3>해와 낮</h3><div class="grid">' +
+        stat("🌅 " + hhmm(s.sunrise), "해 뜸") +
+        stat("🌇 " + hhmm(s.sunset), "해 짐") +
+        stat("☀️ " + daylen(s.sunrise, s.sunset), "낮 길이") +
+        '</div>' + (s.civilm ? '<div class="muted" style="margin-top:6px">밝아지기 시작 ' + esc(hhmm(s.civilm)) + ' · 어두워짐 ' + esc(hhmm(s.civile)) + '</div>' : "") +
+        '</div>';
+    } else html += '<div class="card"><h3>해와 낮</h3>' + fail(r[2].reason) + '</div>';
+
+    if (r[1].status === "fulfilled"){
+      var by = {};
+      list(r[1].value).forEach(function(it){
+        var k = it.fcstDate + it.fcstTime;
+        (by[k] = by[k] || {time: it.fcstTime})[it.category] = it.fcstValue;
+      });
+      var keys = Object.keys(by).sort();
+      html += '<div class="card"><h3>앞으로 6시간</h3><div class="hours">' + keys.map(function(k){
+        var f = by[k], sky = (f.PTY && f.PTY !== "0") ? PTY[f.PTY] : (SKY[f.SKY] || "");
+        return '<div class="hour"><div class="muted">' + esc(hhmm(f.time)) + '</div><div>' + esc(sky.split(" ")[0] || "") + '</div><b>' + esc(f.T1H != null ? f.T1H + "°" : "-") + '</b></div>';
+      }).join("") + '</div></div>';
+    } else html += '<div class="card"><h3>앞으로 6시간</h3>' + fail(r[1].reason) + '</div>';
+
+    $("view").innerHTML = html;
+  });
+}
+function stat(v, label){ return '<div class="stat"><b>' + esc(v) + '</b><span>' + esc(label) + '</span></div>'; }
+
+/* ---------- 관광지 / 축제 ---------- */
+function showTour(my){
+  loading("주변 관광지 불러오는 중…");
+  call("tour", {mapX: current.lon.toFixed(6), mapY: current.lat.toFixed(6), radius: 10000, numOfRows: 20}).then(function(res){
+    if (my !== token) return;
+    var items = list(res);
+    $("view").innerHTML = '<div class="muted">' + esc(current.name) + ' 반경 10km, 가까운 순</div>' +
+      (items.length ? items.map(function(it){
+        var d = it.dist ? (Number(it.dist) >= 1000 ? (Number(it.dist)/1000).toFixed(1) + "km" : Math.round(it.dist) + "m") : "";
+        return '<div class="card item">' + (it.firstimage ? '<img loading="lazy" alt="" src="' + esc(it.firstimage) + '">' : "") +
+          '<div class="body"><h3>' + esc(it.title) + (d ? '<span class="badge">' + esc(d) + '</span>' : "") + '</h3>' +
+          '<div class="muted">' + esc(it.addr1) + '</div><div>' + tel(it.tel) + ' ' + mapLink(it.title, it.addr1) + '</div></div></div>';
+      }).join("") : '<div class="card muted">주변 관광지를 찾지 못했어요.</div>') +
+      '<div class="tip">🚶 오래 걷는 날엔 편한 신발과 물, 1~2시간마다 쉬는 시간을 챙기세요.</div>';
+  }).catch(function(e){ if (my === token) $("view").innerHTML = fail(e); });
+}
+
+function showFestival(my){
+  loading("축제 불러오는 중…");
+  var p = {eventStartDate: ymd(kst(0)), numOfRows: 20};
+  if (current.areaCode) p.areaCode = current.areaCode;
+  call("festival", p).then(function(res){
+    if (my !== token) return;
+    var items = list(res);
+    $("view").innerHTML = '<div class="muted">' + esc(current.areaCode ? current.name + " 지역" : "전국") + ', 오늘 이후 열리는 축제</div>' +
+      (items.length ? items.map(function(it){
+        return '<div class="card item">' + (it.firstimage ? '<img loading="lazy" alt="" src="' + esc(it.firstimage) + '">' : "") +
+          '<div class="body"><h3>' + esc(it.title) + '</h3><div>📅 ' + esc(fmtDate(it.eventstartdate)) + ' ~ ' + esc(fmtDate(it.eventenddate)) + '</div>' +
+          '<div class="muted">' + esc(it.addr1) + '</div><div>' + tel(it.tel) + ' ' + mapLink(it.title, it.addr1) + '</div></div></div>';
+      }).join("") : '<div class="card muted">예정된 축제를 찾지 못했어요.</div>') +
+      '<div class="tip">👥 사람이 많은 곳에서는 일행과 만날 장소를 미리 정하고, 아이에게는 연락처를 적어 주세요.</div>';
+  }).catch(function(e){ if (my === token) $("view").innerHTML = fail(e); });
+}
+
+/* ---------- 약국 / 응급실 ---------- */
+function showPlaces(op, my){
+  loading(op === "er" ? "가까운 응급실 찾는 중…" : "가까운 약국 찾는 중…");
+  call(op, {WGS84_LON: current.lon.toFixed(6), WGS84_LAT: current.lat.toFixed(6), numOfRows: 15}).then(function(res){
+    if (my !== token) return;
+    var items = list(res);
+    var head = op === "er"
+      ? '<div class="tip danger">🚨 위급하면 바로 <a href="tel:119">119</a>에 전화하세요. 응급실 운영 상황은 전화로 꼭 확인하세요.</div>'
+      : '<div class="tip">💊 운영 시간은 바뀔 수 있어요. 가기 전에 전화로 확인하세요.</div>';
+    $("view").innerHTML = head + '<div class="muted">' + esc(current.name) + ' 기준 가까운 순</div>' +
+      (items.length ? items.map(function(it){
+        var dist = it.distance ? '<span class="badge">' + esc(Number(it.distance).toFixed(1)) + 'km</span>' : "";
+        var hours = (it.startTime && it.endTime) ? '<div class="muted">오늘 ' + esc(hhmm(it.startTime)) + ' ~ ' + esc(hhmm(it.endTime)) + '</div>' : "";
+        var erTel = (op === "er" && it.dutyTel3) ? '<div>응급실 ' + tel(it.dutyTel3) + '</div>' : "";
+        return '<div class="card"><h3>' + esc(it.dutyName) + dist + '</h3><div class="muted">' + esc(it.dutyAddr) + '</div>' + hours +
+          '<div>' + tel(it.dutyTel1) + ' ' + mapLink(it.dutyName, it.dutyAddr) + '</div>' + erTel + '</div>';
+      }).join("") : '<div class="card muted">주변에서 찾지 못했어요.</div>');
+  }).catch(function(e){ if (my === token) $("view").innerHTML = fail(e); });
+}
+
+/* ---------- 약 찾기 (e약은요) ---------- */
+var COMMON = ["타이레놀","판콜","베아제","마그밀","지르텍","후시딘","키미테"];
+function showDrug(){
+  $("view").innerHTML = '<div class="card"><h3>약 이름으로 찾기</h3><form id="drugForm" class="row">' +
+    '<input id="drugQ" placeholder="예: 타이레놀" style="flex:1" maxlength="40"><button>찾기</button></form>' +
+    '<div class="row" style="margin-top:8px">' + COMMON.map(function(n){ return '<button type="button" class="ghost q">' + esc(n) + '</button>'; }).join("") + '</div>' +
+    '<div class="muted" style="margin-top:8px">여행 상비약: 해열·진통제, 소화제, 지사제, 멀미약, 상처 연고, 밴드, 평소 먹는 약(넉넉히)</div></div><div id="drugOut"></div>';
+  $("drugForm").onsubmit = function(ev){ ev.preventDefault(); searchDrug($("drugQ").value); };
+  Array.prototype.forEach.call(document.querySelectorAll("button.q"), function(b){
+    b.onclick = function(){ $("drugQ").value = b.textContent; searchDrug(b.textContent); };
+  });
+}
+function searchDrug(q){
+  q = String(q||"").trim(); if (!q) return;
+  var out = $("drugOut"); out.innerHTML = '<div class="card muted">찾는 중…</div>';
+  call("drug", {itemName: q, numOfRows: 10}).then(function(res){
+    var items = list(res);
+    out.innerHTML = items.length ? items.map(function(it){
+      function sec(t, v){ v = plain(v); return v ? '<p><b>' + esc(t) + '</b><br>' + esc(v) + '</p>' : ""; }
+      return '<div class="card"><h3>' + esc(it.itemName) + '</h3><div class="muted">' + esc(it.entpName) + '</div>' +
+        sec("효능", it.efcyQesitm) + '<details><summary>먹는 법 · 주의할 점</summary>' +
+        sec("먹는 법", it.useMethodQesitm) + sec("먹기 전 꼭 알아둘 것", it.atpnWarnQesitm) + sec("주의사항", it.atpnQesitm) +
+        sec("함께 먹으면 안 되는 것", it.intrcQesitm) + sec("이상반응", it.seQesitm) + sec("보관법", it.depositMethodQesitm) + '</details></div>';
+    }).join("") + '<div class="muted">약은 약사·의사와 상담 후 드세요.</div>' : '<div class="card muted">"' + esc(q) + '" 검색 결과가 없어요.</div>';
+  }).catch(function(e){ out.innerHTML = fail(e); });
+}
+
+/* ---------- 화면 전환 ---------- */
+function render(){
+  var my = ++token;
+  if (tab === "weather") showWeather(my);
+  else if (tab === "tour") showTour(my);
+  else if (tab === "festival") showFestival(my);
+  else if (tab === "pharmacy" || tab === "er") showPlaces(tab, my);
+  else if (tab === "drug") showDrug();
+}
+
+function fillDest(){
+  $("dest").innerHTML = DESTS.map(function(d, i){ return '<option value="' + i + '">' + esc(d.name) + '</option>'; }).join("") +
+    (current.mine ? '<option value="me" selected>📍 내 위치</option>' : "");
+  if (!current.mine) $("dest").value = String(DESTS.indexOf(current));
+}
+
+$("dest").onchange = function(){
+  if (this.value === "me") return;
+  current = DESTS[+this.value]; fillDest(); render();
+};
+$("locBtn").onclick = function(){
+  if (!navigator.geolocation) { alert("이 브라우저는 위치 기능을 지원하지 않아요."); return; }
+  navigator.geolocation.getCurrentPosition(function(p){
+    current = {name:"내 위치", lat:p.coords.latitude, lon:p.coords.longitude, areaCode:null, mine:true};
+    fillDest(); render();
+  }, function(){ alert("위치를 가져오지 못했어요. 여행지를 목록에서 골라 주세요."); }, {timeout:10000});
+};
+Array.prototype.forEach.call(document.querySelectorAll("#tabs button"), function(b){
+  b.onclick = function(){
+    tab = b.getAttribute("data-tab");
+    Array.prototype.forEach.call(document.querySelectorAll("#tabs button"), function(x){ x.classList.toggle("on", x === b); });
+    render();
+  };
+});
+
+/* ---------- 예시 데이터 (RELAY_URL 이 비어 있을 때) ---------- */
+function wrap(items){ return {ok:true, sample:true, response:{header:{resultCode:"00"}, body:{items:{item:items}}}}; }
+function sample(op){
+  var b = kst(0), t = pad(b.getUTCHours());
+  if (op === "ncst") return wrap([{category:"T1H",obsrValue:"21.4"},{category:"REH",obsrValue:"55"},{category:"WSD",obsrValue:"2.3"},{category:"PTY",obsrValue:"0"},{category:"RN1",obsrValue:"0"}]);
+  if (op === "fcst") {
+    var arr = [];
+    for (var i = 1; i <= 6; i++){
+      var h = pad((b.getUTCHours() + i) % 24) + "00";
+      arr.push({fcstDate:ymd(b), fcstTime:h, category:"T1H", fcstValue:String(21 + (i%3) - 1)});
+      arr.push({fcstDate:ymd(b), fcstTime:h, category:"SKY", fcstValue:i < 4 ? "1" : "3"});
+      arr.push({fcstDate:ymd(b), fcstTime:h, category:"PTY", fcstValue:"0"});
+    }
+    return wrap(arr);
+  }
+  if (op === "sun") return wrap([{sunrise:"0656", sunset:"1734", civilm:"0629", civile:"1801"}]);
+  if (op === "tour") return wrap([
+    {title:"(예시) 시립 공원", addr1:"예시시 중앙로 1", dist:"420", tel:""},
+    {title:"(예시) 전통 시장", addr1:"예시시 시장길 22", dist:"1350", tel:""},
+    {title:"(예시) 해변 산책로", addr1:"예시시 해변로 300", dist:"3800", tel:""}]);
+  if (op === "festival") return wrap([
+    {title:"(예시) 가을 빛 축제", addr1:"예시시 강변공원", eventstartdate:ymd(b), eventenddate:ymd(kst(-7*24*60))}]);
+  if (op === "pharmacy") return wrap([
+    {dutyName:"(예시) 온누리약국", dutyAddr:"예시시 중앙로 10", dutyTel1:"000-0000-0000", distance:"0.3", startTime:"0900", endTime:"2100"},
+    {dutyName:"(예시) 행복약국", dutyAddr:"예시시 역전길 5", dutyTel1:"000-0000-0001", distance:"0.8", startTime:"0830", endTime:"1900"}]);
+  if (op === "er") return wrap([
+    {dutyName:"(예시) 시립병원", dutyAddr:"예시시 병원로 1", dutyTel1:"000-0000-0002", dutyTel3:"000-0000-0003", distance:"1.6"}]);
+  if (op === "drug") return wrap([
+    {itemName:"(예시) 해열진통제정", entpName:"예시제약", efcyQesitm:"이 약은 두통, 치통, 발열 등에 사용합니다.", useMethodQesitm:"필요할 때 1회 1정, 하루 최대 횟수를 지켜 복용합니다.", atpnQesitm:"정해진 용량을 넘기지 마세요.", depositMethodQesitm:"실온에서 보관하세요."}]);
+  return wrap([]);
+}
+
+$("relayNotice").hidden = USE_RELAY;
+fillDest();
+render();
+})();
+</script>
+</body>
+</html>
