@@ -371,6 +371,8 @@
   .o-mode-cold .o-todo li { background: var(--cold-soft); }
   .o-mode-dusk .o-todo li, .o-mode-night .o-todo li { background: var(--dusk-soft); }
   .cat.cat-wide { grid-column: 1 / -1; }
+  .o-where { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; margin-top: 16px; }
+  .o-where .tabs button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
   @keyframes o-tw { to { opacity: .25; } }
   @keyframes o-pulse { to { transform: scale(1.12); } }
   @keyframes o-snow { from { transform: translate(0,-10px); } to { transform: translate(-30px,380px); } }
@@ -532,12 +534,19 @@
       <div class="intro-txt">
         <small>여행이의 안내</small>
         <h2 class="jua">지금 나가도 될까?</h2>
-        <p>지금 기온과 체감온도, 해 지는 시각을 보고 야외로 갈지, 카페·실내 명소로 갈지, 숙소로 돌아갈지 알려 드려요.</p>
+        <p>지금 내 위치(또는 고른 여행지)의 기온과 체감온도, 해 지는 시각을 보고 야외로 갈지, 카페·실내 명소로 갈지, 숙소로 돌아갈지 알려 드려요.</p>
         <div class="src"><span class="live">실시간 API</span>기상청 초단기실황 · 한국천문연구원 출몰시각 · 위험 단계는 체감온도로 추정</div>
       </div>
       <div class="intro-char" data-char="trip"></div>
     </div>
 
+    <div class="o-where">
+      <div class="tabs seg">
+        <button type="button" id="oHereBtn">📍 내 위치 기준</button>
+        <button type="button" id="oDestBtn">🧳 여행지 기준</button>
+      </div>
+      <span class="sub" id="oWhereMsg"></span>
+    </div>
     <div class="o-stage">
       <div class="o-pan"><svg id="oScene" class="o-scene" viewBox="0 0 800 360" role="img" aria-label="여행지 그림: 여행이와 여행자들"></svg></div>
       <div class="o-verdict"><span class="o-badge" id="oVerdict">불러오는 중…</span><span class="o-badge small" id="oClock"></span></div>
@@ -1140,6 +1149,7 @@ var scrollTarget = null;   // 화면을 바꾼 뒤 이동할 곳
 function showView(v) {
   if (VIEWS.indexOf(v) < 0) v = "home";
   VIEWS.forEach(function (n) { document.getElementById("view-" + n).hidden = n !== v; });
+  if (v === "outside" && typeof OUT !== "undefined") OUT.onShow();
   document.querySelectorAll("dialog[open]").forEach(function (d) { d.close(); });
   if (scrollTarget) { document.getElementById(scrollTarget).scrollIntoView(); scrollTarget = null; }
   else window.scrollTo(0, 0);
@@ -2007,6 +2017,8 @@ var OUT = (function () {
   var NS = "http://www.w3.org/2000/svg", GROUND = 300, OINK = "#2c3a2b";
   var REDUCED = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   var scene = null, world = null, wx = null, sun = null, forced = null, rafOn = false, lastT = null;
+  // 기준 위치: "here"(내 위치, 휴대폰 GPS) 또는 "dest"(위에서 고른 여행지)
+  var src = "here", here = null, hereWx = null, hereSun = null, hereAsked = false;
   var LV = ["없음", "관심", "주의", "경고", "위험"];
 
   // ----- 위험 단계 (체감온도) -----
@@ -2397,8 +2409,12 @@ var OUT = (function () {
   function render() {
     if (!scene) return;
     var p = kstParts(0), now = p.h * 60 + p.min;
-    var sn = sun || sunCalc(dest.lat, dest.lon);
-    var w = wx, d = forced ? DEMO[forced] : null;
+    var useHere = src === "here" && here;
+    var loc = useHere ? here : dest;
+    var sn = (useHere ? hereSun : sun) || sunCalc(loc.lat, loc.lon);
+    var w = useHere ? hereWx : wx, d = forced ? DEMO[forced] : null;
+    document.getElementById("oHereBtn").classList.toggle("on", src === "here");
+    document.getElementById("oDestBtn").classList.toggle("on", src !== "here");
     if (d) {
       w = { t: d.t, rh: d.rh, ws: d.ws, rain: !!d.rain };
       now = d.clock != null ? d.clock : forced === "dusk" ? sn.set - 35 : sn.set + 50;
@@ -2415,7 +2431,7 @@ var OUT = (function () {
 
     document.getElementById("view-outside").className = "view " + MODES[mode].cls;
     setText("oVerdict", MODES[mode].label);
-    setText("oClock", dest.name + " · " + hm(now) + (forced ? " (미리보기)" : isDemo() ? " (예시)" : ""));
+    setText("oClock", loc.name + " · " + hm(now) + (forced ? " (미리보기)" : isDemo() ? " (예시)" : ""));
 
     setText("oTemp", isFinite(w.t) ? w.t.toFixed(1) + "℃" : "-");
     setText("oTempSub", w.t >= 25 ? "체감 " + feelHot.toFixed(1) + "℃ (습도 " + w.rh + "%)"
@@ -2446,19 +2462,65 @@ var OUT = (function () {
 
     var notes = [];
     if (isDemo()) notes.push("지금은 예시 화면이에요.");
+    notes.push("기준: " + (useHere ? "지금 내 위치(" + here.lat.toFixed(3) + ", " + here.lon.toFixed(3) + ")" : "여행지 " + dest.name) + ".");
     notes.push("해 지는 시각: " + (sn.src === "천문연" ? "한국천문연구원 출몰시각." : "천문연 자료를 못 받아 계산값으로 보여 줘요."));
     notes.push("위험 단계는 기상청 공식 영향예보가 아니라 체감온도로 추정한 값이에요.");
     setText("oNote", notes.join(" "));
 
-    if (!forced) setText("catOutside", MODES[mode].label + (isFinite(w.t) ? " · " + w.t.toFixed(1) + "℃" : ""));
+    if (!forced && !useHere) setText("catOutside", MODES[mode].label + (isFinite(w.t) ? " · " + w.t.toFixed(1) + "℃" : ""));
     var ico = document.getElementById("icoOutside");
     if (ico) ico.innerHTML = travelerSVG(MODES[mode].mood);
     Array.prototype.forEach.call(document.querySelectorAll("#oTry button"), function (b) { b.classList.toggle("on", b.dataset.mode === forced); });
     if (!world || world.mode !== mode) stageFor(mode);
   }
 
+  // ----- 내 위치 -----
+  function nearName(lat, lon) {
+    var best = null, bd = 1e9;
+    DESTS.forEach(function (d) { var k = distKm(lat, lon, d.lat, d.lon); if (k < bd) { bd = k; best = d; } });
+    return best && bd <= 30 ? "내 위치 (" + best.name + " 근처)" : "내 위치";
+  }
+  function loadHere() {
+    hereAsked = true;
+    if (!navigator.geolocation) { useDest("이 브라우저는 위치 기능이 없어요. 여행지 기준으로 보여 줘요."); return; }
+    setText("oWhereMsg", "내 위치를 찾는 중이에요… (위치 권한을 허용해 주세요)");
+    navigator.geolocation.getCurrentPosition(function (pos) {
+      here = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+      here.name = nearName(here.lat, here.lon);
+      hereWx = null; hereSun = null;
+      setText("oWhereMsg", "📍 " + here.name + "의 날씨와 해 지는 시각이에요.");
+      if (world) world.mode = null;
+      render();
+      var g = toGrid(here.lat, here.lon), nb = ncstBase(), forHere = here;
+      fetchData("ncst", { base_date: nb.date, base_time: nb.time, pageNo: 1, numOfRows: 60, nx: g.nx, ny: g.ny }).then(function (data) {
+        if (forHere !== here) return;
+        var o = {};
+        itemList(checkResult(data)).forEach(function (it) { o[it.category] = String(it.obsrValue); });
+        var pty = String(o.PTY || "0");
+        hereWx = { t: Number(o.T1H), rh: Number(o.REH) || 0, ws: Number(o.WSD) || 0, rain: pty !== "0" && pty !== "" };
+        render();
+      }).catch(function (err) { if (forHere === here) useDest("내 위치 날씨를 불러오지 못했어요(" + err.message + "). 여행지 기준으로 보여 줘요."); });
+      fetchData("sun", { locdate: ymd(kstParts(0)), longitude: here.lon.toFixed(4), latitude: here.lat.toFixed(4) }).then(function (data) {
+        if (forHere !== here) return;
+        var it = itemList(checkResult(data))[0] || {};
+        var r = hhmm(it.sunrise), st = hhmm(it.sunset), ce = hhmm(it.civile);
+        if (r != null && st != null) { hereSun = { rise: r, set: st, dusk: ce != null ? ce : st + 28, src: "천문연" }; render(); }
+      }).catch(function () {});
+    }, function () {
+      useDest("위치 권한이 없어서 여행지(" + dest.name + ") 기준으로 보여 줘요.");
+    }, { timeout: 10000, maximumAge: 600000 });
+  }
+  function useDest(msg) {
+    src = "dest";
+    setText("oWhereMsg", msg || "🧳 위에서 고른 여행지(" + dest.name + ") 기준이에요.");
+    if (world) world.mode = null;
+    render();
+  }
+
   function init() {
     scene = document.getElementById("oScene");
+    document.getElementById("oHereBtn").onclick = function () { src = "here"; loadHere(); };
+    document.getElementById("oDestBtn").onclick = function () { useDest(); };
     var tr = document.getElementById("oTry");
     Object.keys(NAMES).forEach(function (k) {
       var b = el("button", null, NAMES[k]);
@@ -2484,7 +2546,9 @@ var OUT = (function () {
     },
     // s: {rise, set, dusk} (분). null이면 계산값을 써요
     setSun: function (s) { sun = s ? { rise: s.rise, set: s.set, dusk: s.dusk != null ? s.dusk : s.set + 28, src: "천문연" } : null; render(); },
-    reset: function () { wx = null; sun = null; if (world) world.mode = null; },
+    reset: function () { wx = null; sun = null; if (world) world.mode = null; if (src !== "here") setText("oWhereMsg", "🧳 위에서 고른 여행지(" + dest.name + ") 기준이에요."); },
+    // 화면을 처음 열 때 내 위치를 물어봐요
+    onShow: function () { if (src === "here" && !hereAsked) loadHere(); else render(); },
     render: render
   };
 })();
